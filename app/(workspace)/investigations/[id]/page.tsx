@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth/getCurrentUser";
 import { getInvestigationDetail, listActiveInvestigators } from "@/lib/services/investigationQueries";
 import { SectionStepper } from "@/components/investigations/SectionStepper";
@@ -64,6 +65,10 @@ export default async function InvestigationDetailPage({
         actionsCompleteness={
           investigation._count.correctiveActions > 0 || investigation._count.preventiveActions > 0 ? "complete" : "not-started"
         }
+        findingsCompleteness={investigation._count.findings > 0 ? "complete" : "not-started"}
+        reviewCompleteness={
+          investigation.status === "Closed" ? "complete" : investigation.status === "Review" ? "in-progress" : "not-started"
+        }
       />
 
       <div className="flex-1 p-6">
@@ -73,6 +78,13 @@ export default async function InvestigationDetailPage({
         <div className="mt-2 flex items-center gap-3">
           <h1 className="text-xl font-semibold text-foreground">{investigation.title}</h1>
           <StageBadge status={investigation.status} />
+        </div>
+
+        <div className="mt-3 flex gap-2 border-b border-border">
+          <span className="border-b-2 border-teal px-3 py-2 text-sm text-foreground">Summary</span>
+          <Link href={`/investigations/${investigation.id}/history`} className="px-3 py-2 text-sm text-muted hover:text-teal">
+            History
+          </Link>
         </div>
 
         <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-3">
@@ -89,6 +101,16 @@ export default async function InvestigationDetailPage({
           <div className="rounded border border-border bg-surface p-4">
             <p className="text-xs uppercase text-muted">Created By</p>
             <p className="mt-1 text-sm text-foreground">{investigation.createdBy.name}</p>
+          </div>
+          <div className="rounded border border-border bg-surface p-4">
+            <p className="text-xs uppercase text-muted">Last Updated</p>
+            <p className="mt-1 font-mono text-sm text-foreground">{investigation.updatedAt.toISOString().slice(0, 10)}</p>
+          </div>
+          <div className="rounded border border-border bg-surface p-4">
+            <p className="text-xs uppercase text-muted">Closed At</p>
+            <p className="mt-1 font-mono text-sm text-foreground">
+              {investigation.closedAt ? investigation.closedAt.toISOString().slice(0, 10) : "—"}
+            </p>
           </div>
         </div>
 

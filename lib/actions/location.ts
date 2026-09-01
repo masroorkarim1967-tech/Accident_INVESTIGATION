@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { requireInvestigationEditAccess } from "@/lib/auth/requireInvestigationEditAccess";
 import { AuthorizationError, NotFoundError } from "@/lib/errors";
 import { locationSchema } from "@/lib/validation/location";
+import { checkAndAdvanceStage } from "@/lib/services/stageTransition";
 import { UserRole } from "@/prisma/generated/prisma/client";
 
 const EDIT_ROLES = [UserRole.Administrator, UserRole.InvestigationManager, UserRole.Investigator];
@@ -17,8 +18,9 @@ export async function saveLocationAction(
   _prevState: LocationActionState,
   formData: FormData,
 ): Promise<LocationActionState> {
+  let user;
   try {
-    await requireInvestigationEditAccess(investigationId, EDIT_ROLES);
+    ({ user } = await requireInvestigationEditAccess(investigationId, EDIT_ROLES));
   } catch (error) {
     if (error instanceof AuthorizationError || error instanceof NotFoundError) return { error: error.message };
     throw error;
@@ -66,6 +68,8 @@ export async function saveLocationAction(
     create: { investigationId, ...data },
     update: data,
   });
+
+  await checkAndAdvanceStage(investigationId, user.id);
 
   revalidatePath(`/investigations/${investigationId}`);
   return { error: null };

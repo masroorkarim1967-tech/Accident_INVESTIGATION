@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { requireInvestigationEditAccess } from "@/lib/auth/requireInvestigationEditAccess";
 import { AuthorizationError, NotFoundError } from "@/lib/errors";
 import { witnessSchema } from "@/lib/validation/witness";
+import { checkAndAdvanceStage } from "@/lib/services/stageTransition";
 import { UserRole } from "@/prisma/generated/prisma/client";
 
 const EDIT_ROLES = [UserRole.Administrator, UserRole.InvestigationManager, UserRole.Investigator];
@@ -24,8 +25,9 @@ export async function saveWitnessAction(
   _prevState: WitnessActionState,
   formData: FormData,
 ): Promise<WitnessActionState> {
+  let user;
   try {
-    await requireInvestigationEditAccess(investigationId, EDIT_ROLES);
+    ({ user } = await requireInvestigationEditAccess(investigationId, EDIT_ROLES));
   } catch (error) {
     const mapped = mapEditAccessError(error);
     if (mapped) return mapped;
@@ -66,6 +68,8 @@ export async function saveWitnessAction(
     ]);
   }
 
+  await checkAndAdvanceStage(investigationId, user.id);
+
   revalidatePath(`/investigations/${investigationId}`);
   return { error: null };
 }
@@ -87,8 +91,9 @@ export async function removeWitnessAction(investigationId: number, witnessId: nu
 
 /** FR-019/EC-09 — "No witnesses recorded" acknowledgment, mutually exclusive with recording witnesses. */
 export async function toggleNoWitnessesAction(investigationId: number, confirmed: boolean): Promise<WitnessActionState> {
+  let user;
   try {
-    await requireInvestigationEditAccess(investigationId, EDIT_ROLES);
+    ({ user } = await requireInvestigationEditAccess(investigationId, EDIT_ROLES));
   } catch (error) {
     const mapped = mapEditAccessError(error);
     if (mapped) return mapped;
@@ -103,6 +108,7 @@ export async function toggleNoWitnessesAction(investigationId: number, confirmed
   }
 
   await db.occurrence.update({ where: { investigationId }, data: { noWitnessesConfirmed: confirmed } });
+  await checkAndAdvanceStage(investigationId, user.id);
   revalidatePath(`/investigations/${investigationId}`);
   return { error: null };
 }

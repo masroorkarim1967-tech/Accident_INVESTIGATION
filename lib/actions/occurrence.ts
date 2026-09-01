@@ -12,6 +12,7 @@ import {
 } from "@/lib/validation/occurrence";
 import { suggestClassification, type ClassificationSuggestion } from "@/lib/services/suggestClassification";
 import { calculateRiskScore, resolveRiskBand, resolveInvestigationPriority, moreSevere } from "@/lib/services/riskEngine";
+import { checkAndAdvanceStage } from "@/lib/services/stageTransition";
 import { UserRole } from "@/prisma/generated/prisma/client";
 
 const EDIT_ROLES = [UserRole.Administrator, UserRole.InvestigationManager, UserRole.Investigator];
@@ -30,8 +31,9 @@ export async function saveOccurrenceNarrativeAction(
   _prevState: OccurrenceActionState,
   formData: FormData,
 ): Promise<OccurrenceActionState> {
+  let user;
   try {
-    await requireInvestigationEditAccess(investigationId, EDIT_ROLES);
+    ({ user } = await requireInvestigationEditAccess(investigationId, EDIT_ROLES));
   } catch (error) {
     const mapped = mapEditAccessError(error);
     if (mapped) return mapped;
@@ -68,6 +70,10 @@ export async function saveOccurrenceNarrativeAction(
       narrativeDescription,
     },
   });
+
+  // Draft -> Open gate (investigation-workflow.md §8) needs this plus an
+  // assigned Investigator — no-ops until both are true.
+  await checkAndAdvanceStage(investigationId, user.id);
 
   revalidatePath(`/investigations/${investigationId}`);
   return { error: null };
@@ -161,6 +167,10 @@ export async function saveOccurrenceClassificationAction(
     },
   });
 
+  // Open -> UnderInvestigation gate also needs Actual/Potential Outcome +
+  // Likelihood (saveOccurrenceOutcomeAction below) — no-ops until both saves land.
+  await checkAndAdvanceStage(investigationId, user.id);
+
   revalidatePath(`/investigations/${investigationId}`);
   return { error: null };
 }
@@ -171,8 +181,9 @@ export async function saveOccurrenceOutcomeAction(
   _prevState: OccurrenceActionState,
   formData: FormData,
 ): Promise<OccurrenceActionState> {
+  let user;
   try {
-    await requireInvestigationEditAccess(investigationId, EDIT_ROLES);
+    ({ user } = await requireInvestigationEditAccess(investigationId, EDIT_ROLES));
   } catch (error) {
     const mapped = mapEditAccessError(error);
     if (mapped) return mapped;
@@ -218,6 +229,8 @@ export async function saveOccurrenceOutcomeAction(
       priorityOverrideJustification: null,
     },
   });
+
+  await checkAndAdvanceStage(investigationId, user.id);
 
   revalidatePath(`/investigations/${investigationId}`);
   return { error: null };
@@ -275,8 +288,9 @@ export async function overrideOccurrenceFieldAction(
 
 /** FR-016 edge case — "No persons were involved" toggle, mutually exclusive with recording persons. */
 export async function toggleNoPersonsInvolvedAction(investigationId: number, confirmed: boolean): Promise<OccurrenceActionState> {
+  let user;
   try {
-    await requireInvestigationEditAccess(investigationId, EDIT_ROLES);
+    ({ user } = await requireInvestigationEditAccess(investigationId, EDIT_ROLES));
   } catch (error) {
     const mapped = mapEditAccessError(error);
     if (mapped) return mapped;
@@ -291,6 +305,7 @@ export async function toggleNoPersonsInvolvedAction(investigationId: number, con
   }
 
   await db.occurrence.update({ where: { investigationId }, data: { noPersonsInvolvedConfirmed: confirmed } });
+  await checkAndAdvanceStage(investigationId, user.id);
   revalidatePath(`/investigations/${investigationId}`);
   return { error: null };
 }

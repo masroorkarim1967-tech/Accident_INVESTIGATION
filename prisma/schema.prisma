@@ -195,6 +195,20 @@ enum EffectivenessResult {
   TooEarlyToAssess
 }
 
+// data-model.md §3.21 — InvestigationFinding.findingType.
+enum FindingType {
+  Cause
+  ContributingFactor
+  RiskObservation
+  Other
+}
+
+// data-model.md §3.23 — InvestigationReview.reviewDecision.
+enum ReviewDecision {
+  Approved
+  ChangesRequested
+}
+
 enum DamageLevel {
   None
   Minor
@@ -286,6 +300,8 @@ model User {
   fiveWhysAnalysesAuthored FiveWhysAnalysis[]
   ownedCorrectiveActions   CorrectiveAction[]
   ownedPreventiveActions   PreventiveAction[]
+  findingsAuthored         InvestigationFinding[]
+  reviewsDecided           InvestigationReview[]
 
   @@index([role])
 }
@@ -321,6 +337,8 @@ model Investigation {
   rootCauses           RootCause[]
   correctiveActions    CorrectiveAction[]
   preventiveActions    PreventiveAction[]
+  findings             InvestigationFinding[]
+  reviews              InvestigationReview[]
 
   @@index([status])
   @@index([assignedInvestigatorUserId])
@@ -503,8 +521,9 @@ model Evidence {
   investigatorNotes     String?         @db.Text
   custodyNotes          String?         @db.Text
 
-  investigation Investigation @relation(fields: [investigationId], references: [id], onDelete: Cascade)
+  investigation Investigation         @relation(fields: [investigationId], references: [id], onDelete: Cascade)
   attachments   Attachment[]
+  findingLinks  EvidenceFindingLink[]
 
   @@index([investigationId])
   @@index([evidenceType])
@@ -562,6 +581,7 @@ model Hazard {
   contributingFactorLinks ContributingFactorHazardLink[]
   correctiveActions       CorrectiveAction[]
   preventiveActions       PreventiveAction[]
+  findingLinks            FindingHazardLink[]
 
   @@index([investigationId])
   @@index([initialRiskBand])
@@ -578,6 +598,7 @@ model ContributingFactor {
   investigation  Investigation                     @relation(fields: [investigationId], references: [id], onDelete: Cascade)
   hazardLinks    ContributingFactorHazardLink[]
   rootCauseLinks RootCauseContributingFactorLink[]
+  findingLinks   FindingContributingFactorLink[]
 
   @@index([investigationId])
 }
@@ -649,6 +670,7 @@ model RootCause {
   contributingFactorLinks RootCauseContributingFactorLink[]
   correctiveActions       CorrectiveAction[]
   preventiveActions       PreventiveAction[]
+  findingLinks            FindingRootCauseLink[]
 
   @@index([investigationId])
 }
@@ -735,6 +757,93 @@ model PreventiveAction {
   @@index([requiredForClosure, status])
 }
 
+// data-model.md §3.21 — FR-072/FR-073. findingNumber is unique per
+// investigation, assigned sequentially and renumbered contiguously on
+// removal (FR-073) — never directly user-editable.
+model InvestigationFinding {
+  id              Int         @id @default(autoincrement())
+  investigationId Int
+  findingNumber   Int
+  findingType     FindingType
+  description     String      @db.Text
+  createdByUserId Int
+  createdAt       DateTime    @default(now())
+
+  investigation           Investigation                   @relation(fields: [investigationId], references: [id], onDelete: Cascade)
+  createdBy               User                            @relation(fields: [createdByUserId], references: [id])
+  hazardLinks             FindingHazardLink[]
+  contributingFactorLinks FindingContributingFactorLink[]
+  rootCauseLinks          FindingRootCauseLink[]
+  evidenceLinks           EvidenceFindingLink[]
+
+  @@unique([investigationId, findingNumber])
+  @@index([investigationId])
+}
+
+// data-model.md §3.22 — four separate junction tables (not one polymorphic
+// table) so each retains a real, DB-enforced foreign key.
+model FindingHazardLink {
+  findingId Int
+  hazardId  Int
+
+  finding InvestigationFinding @relation(fields: [findingId], references: [id], onDelete: Cascade)
+  hazard  Hazard               @relation(fields: [hazardId], references: [id], onDelete: Cascade)
+
+  @@id([findingId, hazardId])
+}
+
+model FindingContributingFactorLink {
+  findingId            Int
+  contributingFactorId Int
+
+  finding            InvestigationFinding @relation(fields: [findingId], references: [id], onDelete: Cascade)
+  contributingFactor ContributingFactor   @relation(fields: [contributingFactorId], references: [id], onDelete: Cascade)
+
+  @@id([findingId, contributingFactorId])
+}
+
+model FindingRootCauseLink {
+  findingId   Int
+  rootCauseId Int
+
+  finding   InvestigationFinding @relation(fields: [findingId], references: [id], onDelete: Cascade)
+  rootCause RootCause            @relation(fields: [rootCauseId], references: [id], onDelete: Cascade)
+
+  @@id([findingId, rootCauseId])
+}
+
+// data-model.md §3.22 — new this revision; retroactively connects Phase
+// 6's Evidence-linking UI (FR-071) to real Findings for the first time.
+model EvidenceFindingLink {
+  evidenceId Int
+  findingId  Int
+
+  evidence Evidence             @relation(fields: [evidenceId], references: [id], onDelete: Cascade)
+  finding  InvestigationFinding @relation(fields: [findingId], references: [id], onDelete: Cascade)
+
+  @@id([evidenceId, findingId])
+}
+
+// data-model.md §3.23 (was `ReviewLog`) — FR-051/FR-052/FR-053a. The
+// durable decision record; every row here is also mirrored as a summary
+// event in InvestigationHistory (`relatedReviewId`) so the two audit
+// views (decision detail vs. full timeline) stay consistent by
+// construction.
+model InvestigationReview {
+  id              Int            @id @default(autoincrement())
+  investigationId Int
+  reviewerUserId  Int
+  reviewDecision  ReviewDecision
+  comments        String?        @db.Text
+  decidedAt       DateTime       @default(now())
+
+  investigation  Investigation          @relation(fields: [investigationId], references: [id], onDelete: Cascade)
+  reviewer       User                   @relation(fields: [reviewerUserId], references: [id])
+  historyEntries InvestigationHistory[]
+
+  @@index([investigationId])
+}
+
 // data-model.md §6.4 — configurable risk-band matrix. Seeded with the
 // default Low/Moderate/High/Critical bands; Administrator edit UI (FR-069)
 // is Phase 7's `app/(workspace)/settings/risk-bands/page.tsx`.
@@ -757,10 +866,9 @@ model ReferenceNumberSequence {
   nextValue Int @default(1)
 }
 
-// data-model.md §3.24 — append-only audit log.
-// `relatedReviewId` (FK -> InvestigationReview) is deferred to Phase 10,
-// when InvestigationReview is introduced; adding it now would require a
-// relation to a model that does not yet exist in this phase's schema.
+// data-model.md §3.24 — append-only audit log. `relatedReviewId` cross-
+// references InvestigationReview for ReviewApproved/ReviewChangesRequested
+// events (added this phase, now that InvestigationReview exists).
 model InvestigationHistory {
   id                Int                  @id @default(autoincrement())
   investigationId   Int
@@ -768,11 +876,13 @@ model InvestigationHistory {
   fromStatus        InvestigationStatus?
   toStatus          InvestigationStatus?
   performedByUserId Int
+  relatedReviewId   Int?
   reasonText        String?
   occurredAt        DateTime             @default(now())
 
-  investigation Investigation @relation(fields: [investigationId], references: [id], onDelete: Cascade)
-  performedBy   User          @relation(fields: [performedByUserId], references: [id])
+  investigation Investigation        @relation(fields: [investigationId], references: [id], onDelete: Cascade)
+  performedBy   User                 @relation(fields: [performedByUserId], references: [id])
+  relatedReview InvestigationReview? @relation(fields: [relatedReviewId], references: [id], onDelete: SetNull)
 
   @@index([investigationId, occurredAt])
 }

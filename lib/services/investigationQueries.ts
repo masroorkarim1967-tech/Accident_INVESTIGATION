@@ -155,6 +155,7 @@ export async function getInvestigationDetail(id: number, currentUser: { id: numb
           rootCauses: true,
           correctiveActions: true,
           preventiveActions: true,
+          findings: true,
         },
       },
     },

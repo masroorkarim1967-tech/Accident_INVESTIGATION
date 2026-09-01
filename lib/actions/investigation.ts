@@ -6,6 +6,7 @@ import { requireRole } from "@/lib/auth/requireRole";
 import { AuthorizationError } from "@/lib/errors";
 import { generateReferenceNumber } from "@/lib/services/referenceNumber";
 import { logInvestigationHistory } from "@/lib/services/investigationHistory";
+import { checkAndAdvanceStage } from "@/lib/services/stageTransition";
 import { createInvestigationSchema, assignInvestigatorSchema } from "@/lib/validation/investigation";
 import { HistoryEventType, UserRole } from "@/prisma/generated/prisma/client";
 
@@ -165,6 +166,10 @@ export async function assignInvestigatorAction(
       tx,
     );
   });
+
+  // Draft -> Open gate also needs Occurrence Details complete
+  // (saveOccurrenceNarrativeAction) — no-ops until both are true.
+  await checkAndAdvanceStage(investigationId, actingUser.id);
 
   return { error: null };
 }

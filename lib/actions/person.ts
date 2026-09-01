@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { requireInvestigationEditAccess } from "@/lib/auth/requireInvestigationEditAccess";
 import { AuthorizationError, NotFoundError } from "@/lib/errors";
 import { personSchema } from "@/lib/validation/person";
+import { checkAndAdvanceStage } from "@/lib/services/stageTransition";
 import { UserRole } from "@/prisma/generated/prisma/client";
 
 const EDIT_ROLES = [UserRole.Administrator, UserRole.InvestigationManager, UserRole.Investigator];
@@ -18,8 +19,9 @@ export async function savePersonAction(
   _prevState: PersonActionState,
   formData: FormData,
 ): Promise<PersonActionState> {
+  let user;
   try {
-    await requireInvestigationEditAccess(investigationId, EDIT_ROLES);
+    ({ user } = await requireInvestigationEditAccess(investigationId, EDIT_ROLES));
   } catch (error) {
     if (error instanceof AuthorizationError || error instanceof NotFoundError) return { error: error.message };
     throw error;
@@ -52,6 +54,8 @@ export async function savePersonAction(
       db.occurrence.update({ where: { investigationId }, data: { noPersonsInvolvedConfirmed: false } }),
     ]);
   }
+
+  await checkAndAdvanceStage(investigationId, user.id);
 
   revalidatePath(`/investigations/${investigationId}`);
   return { error: null };

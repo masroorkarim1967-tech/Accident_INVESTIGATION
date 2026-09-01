@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { requireInvestigationEditAccess } from "@/lib/auth/requireInvestigationEditAccess";
 import { AuthorizationError, NotFoundError } from "@/lib/errors";
 import { evidenceSchema } from "@/lib/validation/evidence";
+import { checkAndAdvanceStage } from "@/lib/services/stageTransition";
 import { UserRole } from "@/prisma/generated/prisma/client";
 
 const EDIT_ROLES = [UserRole.Administrator, UserRole.InvestigationManager, UserRole.Investigator];
@@ -24,8 +25,9 @@ export async function saveEvidenceAction(
   _prevState: EvidenceActionState,
   formData: FormData,
 ): Promise<EvidenceActionState> {
+  let user;
   try {
-    await requireInvestigationEditAccess(investigationId, EDIT_ROLES);
+    ({ user } = await requireInvestigationEditAccess(investigationId, EDIT_ROLES));
   } catch (error) {
     const mapped = mapEditAccessError(error);
     if (mapped) return mapped;
@@ -72,6 +74,8 @@ export async function saveEvidenceAction(
     ]);
   }
 
+  await checkAndAdvanceStage(investigationId, user.id);
+
   revalidatePath(`/investigations/${investigationId}`);
   return { error: null };
 }
@@ -96,8 +100,9 @@ export async function toggleNoEvidenceAvailableAction(
   investigationId: number,
   confirmed: boolean,
 ): Promise<EvidenceActionState> {
+  let user;
   try {
-    await requireInvestigationEditAccess(investigationId, EDIT_ROLES);
+    ({ user } = await requireInvestigationEditAccess(investigationId, EDIT_ROLES));
   } catch (error) {
     const mapped = mapEditAccessError(error);
     if (mapped) return mapped;
@@ -112,6 +117,7 @@ export async function toggleNoEvidenceAvailableAction(
   }
 
   await db.occurrence.update({ where: { investigationId }, data: { noEvidenceAvailableConfirmed: confirmed } });
+  await checkAndAdvanceStage(investigationId, user.id);
   revalidatePath(`/investigations/${investigationId}`);
   return { error: null };
 }

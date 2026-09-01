@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { requireInvestigationEditAccess } from "@/lib/auth/requireInvestigationEditAccess";
 import { AuthorizationError, NotFoundError } from "@/lib/errors";
 import { aircraftSchema } from "@/lib/validation/aircraft";
+import { checkAndAdvanceStage } from "@/lib/services/stageTransition";
 import { UserRole } from "@/prisma/generated/prisma/client";
 
 const EDIT_ROLES = [UserRole.Administrator, UserRole.InvestigationManager, UserRole.Investigator];
@@ -17,8 +18,9 @@ export async function saveAircraftAction(
   _prevState: AircraftActionState,
   formData: FormData,
 ): Promise<AircraftActionState> {
+  let user;
   try {
-    await requireInvestigationEditAccess(investigationId, EDIT_ROLES);
+    ({ user } = await requireInvestigationEditAccess(investigationId, EDIT_ROLES));
   } catch (error) {
     if (error instanceof AuthorizationError || error instanceof NotFoundError) return { error: error.message };
     throw error;
@@ -49,6 +51,11 @@ export async function saveAircraftAction(
     create: { investigationId, ...data },
     update: data,
   });
+
+  // UnderInvestigation -> Analysis gate (investigation-workflow.md §8) needs
+  // Aircraft/Flight/Location/Persons/Evidence/Witnesses together — cheap to
+  // re-check after any one of them saves, since it no-ops until all are met.
+  await checkAndAdvanceStage(investigationId, user.id);
 
   revalidatePath(`/investigations/${investigationId}`);
   return { error: null };

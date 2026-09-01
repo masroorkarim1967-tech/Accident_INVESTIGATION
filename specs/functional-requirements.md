@@ -6,9 +6,17 @@ prior 4-role (Admin/Investigator/Reviewer/Viewer) requirement set.
 
 **Revision note**: this pass expands Module 1 (Dashboard) with a full metric dictionary (§1.0), a
 richer set of tiles/visualizations, and a new dashboard-wide filter capability (FR-065). FR-001–FR-004
-are updated in place (not renumbered, per §0.1); FR-065 is newly added. This also does **not** update
-the 5-state references elsewhere in this document (§0.3 and FR-011/FR-040–FR-054 still reflect the
-prior workflow model) — see `data-model.md` §12 for that still-outstanding follow-up.
+are updated in place (not renumbered, per §0.1); FR-065 is newly added. The 5-state references
+elsewhere in this document that this pass did not touch (§0.3 at the time, and Modules 21–22) were
+corrected in later passes — see §0.3's own note and the Phase 10 revision note below.
+
+**Revision note (Investigation Review / Closure / Findings pass, Phase 10 of `implementation-plan.md`)**:
+Modules 21 (FR-049–FR-052) and 22 (FR-053–FR-055) are rewritten in place to the current 6-state model
+(`Draft → Open → UnderInvestigation → Analysis → Review → Closed`, no stored `CHANGES_REQUESTED`) and
+the `Investigation` entity name, closing **SR-003**. This pass also authors Module 26 — Investigation
+Findings (FR-072–FR-074, closing **SR-008**) — since `data-model.md` §3.21 and `ui-spec.md` §10 fully
+specified this feature with no corresponding FRs, and corrects FR-062/FR-063's citations into
+`report-spec.md` (closing **SR-006**).
 
 **Revision note (occurrence classification pass)**: Module 13 is redesigned around the 14-category
 taxonomy, the actual/potential outcome distinction, and computed risk-level/priority fields defined
@@ -81,9 +89,9 @@ ceremony actions (submit for review; review decision). Two backward transitions 
 stored `CHANGES_REQUESTED` status — "changes requested" is a review *decision*, not an investigation
 status. Full state machine: `investigation-workflow.md`.
 
-Modules 21–22 (FR-049–FR-064) still use the retired names in their own text and are corrected in
-Phase 10 (implementation-plan.md), when those modules are rebuilt — this recap is corrected now
-because Phase 4 (FR-005–FR-011, FR-059–FR-061) needs the exact stored enum values from day one.
+**Corrected during Phase 10 implementation (spec-review.md SR-003, completing this item)**: Modules
+21–22 (FR-049–FR-055) previously still used the retired 5-state names in their own text; both are
+now rewritten to the current 6-state model as part of that phase's Review/Closure work.
 
 ### 0.4 Investigation Support Terminology Policy (binding — product-spec §11.1)
 Any requirement that generates or suggests content must use exactly one of: **"Investigation
@@ -130,10 +138,11 @@ follow-up.
 | 19 | Preventive Actions | FR-042 – FR-043 |
 | 20 | Action Tracking | FR-044, FR-045a – FR-045b, FR-046 – FR-048, FR-070 |
 | 21 | Investigation Review | FR-049 – FR-052 |
-| 22 | Investigation Closure | FR-053 – FR-055 |
+| 22 | Investigation Closure | FR-053, FR-053a, FR-054 – FR-055 |
 | 23 | Report Generation | FR-056 – FR-058 |
 | 24 | Search and Filtering | FR-059 – FR-061 |
 | 25 | Audit/History Information | FR-062 – FR-064 |
+| 26 | Investigation Findings *(new — closes spec-review.md SR-008)* | FR-072 – FR-074 |
 
 ---
 
@@ -831,7 +840,7 @@ linking evidence to findings.
 
 ### FR-071 — Link Evidence to a Finding ("Related Finding")
 - **Purpose**: Let an investigator record which evidence items support which formal Findings
-  (`InvestigationFinding`, module 10), preserving a many-to-many relationship since one item often
+  (`InvestigationFinding`, module 26), preserving a many-to-many relationship since one item often
   supports several findings and vice versa.
 - **User**: ADMIN, MANAGER, INVESTIGATOR (assigned/owning).
 - **Inputs**: Selected Evidence item, one or more `InvestigationFinding` selections from the same
@@ -1548,21 +1557,27 @@ inconsistency is fixed here.
 
 ## 21. Investigation Review
 
+**Revision note (Phase 10, closing SR-003)**: this module is rewritten in place to the current
+6-state model (`data-model.md` §3.2, `investigation-workflow.md` §3/§6) — `Investigation` (not
+`Incident`), `InvestigationReview` (not `ReviewLog`), and no stored `CHANGES_REQUESTED` status
+(`investigation-workflow.md` §0.3/§6: a review decision, not a status). FR-049/FR-050 updated in
+place; FR-051/FR-052 substantially rewritten, including closing **SR-021** (see FR-051's Edge Cases).
+
 ### FR-049 — Submit Investigation for Review
 - **Purpose**: Move a sufficiently complete investigation into independent review.
 - **User**: ADMIN, MANAGER, INVESTIGATOR (assigned/owning).
 - **Inputs**: None beyond the submit action itself (the system evaluates current stored data).
-- **Outputs**: Status transitions `OPEN`/`CHANGES_REQUESTED` → `UNDER_REVIEW`.
-- **Validation Rules**: The completeness gate in `investigation-workflow.md` §4 must be fully
-  satisfied; unmet items block submission entirely (not a warning — see `investigation-workflow.md`
-  §4's explicit "disabled, not merely warned" rule) and are listed with direct links to the relevant
-  section.
+- **Outputs**: Status transitions `Analysis` → `Review` (`investigation-workflow.md` §6).
+- **Validation Rules**: The completeness gate in `investigation-workflow.md` §8's "Analysis → Review"
+  row must be fully satisfied; unmet items block submission entirely (not a warning — see
+  `investigation-workflow.md` §7.1's "disabled, not merely warned" rule) and are listed with direct
+  links to the relevant section. Only valid from `Analysis` status (§7.2's transition matrix).
 - **Success Behavior**: Status updates; the investigation becomes read-only for the
-  investigator (FR-011); a notification-equivalent (in-app indicator) surfaces it to REVIEWER-role
-  users' list views.
+  investigator (FR-011); an in-app indicator surfaces it to REVIEWER-role users' list views.
 - **Error Behavior**: Attempting to submit with unmet gate items is blocked client-side and
   re-validated server-side (defense in depth); a race where data changes between page-load and submit
-  is caught server-side with a fresh unmet-items list returned.
+  is caught server-side with a fresh unmet-items list returned; an attempt from a status other than
+  `Analysis` (e.g., a stale page) is rejected with a clear message naming the current status.
 - **Empty State**: N/A.
 - **Edge Cases**: A REVIEWER cannot submit (submission is investigator/manager/admin-only, per
   product-spec §8.2's separation of duties).
@@ -1570,12 +1585,14 @@ inconsistency is fixed here.
 ### FR-050 — View Submitted Investigation (Reviewer)
 - **Purpose**: Give the Reviewer full visibility into an investigation awaiting decision.
 - **User**: REVIEWER (also visible read-only to ADMIN/MANAGER).
-- **Inputs**: None (navigation to the Review section of an `UNDER_REVIEW` investigation).
-- **Outputs**: Read-only rendering of every data section (identical layout to the investigator's view,
-  per `ui-spec.md` §3.10) plus the Review section's comment/decision controls.
-- **Validation Rules**: Only reachable for investigations in `UNDER_REVIEW` status; a REVIEWER opening
-  an `OPEN`/`DRAFT` investigation sees the standard read-only view with no decision controls (nothing
-  to decide yet).
+- **Inputs**: None (navigation to the Review section, `ui-spec.md` §16, of a `Review`-status
+  investigation).
+- **Outputs**: Read-only rendering of every data section (identical layout to the investigator's view)
+  plus the Review section's completeness checklist, comment/decision controls, and decision history.
+- **Validation Rules**: Decision controls (Approve / Request Changes) are only offered for
+  investigations in `Review` status; a REVIEWER opening an investigation in any other status sees the
+  standard read-only view (or, for `Draft`, no access at all per FR-007) with no decision controls —
+  nothing to decide yet.
 - **Success Behavior**: All data renders identically to how the investigator entered it — no
   reviewer-specific data transformation, to avoid any discrepancy between what was submitted and what
   is reviewed.
@@ -1585,80 +1602,131 @@ inconsistency is fixed here.
 
 ### FR-051 — Approve Investigation
 - **Purpose**: Formally close out an investigation as satisfactorily completed.
-- **User**: REVIEWER (ADMIN retains an emergency override per §0.2).
+- **User**: REVIEWER (ADMIN retains an emergency override per §0.2, acting in place of a Reviewer).
 - **Inputs**: Optional comment.
-- **Outputs**: `ReviewLog` entry (`reviewStatus = Approved`); investigation status → `CLOSED`;
-  `closedAt` set (see FR-053).
-- **Validation Rules**: Only valid from `UNDER_REVIEW` status. Comment is optional but recommended
-  (UI nudge, not a hard requirement) since approval is generally less contentious than a rejection.
-- **Success Behavior**: Investigation closes; report (FR-056) is now presented as final, no longer
+- **Outputs**: `InvestigationReview` entry (`reviewDecision = Approved`); investigation status →
+  `Closed`; `closedAt` set (see FR-053).
+- **Validation Rules**: Only valid from `Review` status. Comment is optional but recommended (UI
+  nudge, not a hard requirement) since approval is generally less contentious than a rejection.
+  **Blocked** (not merely warned) if any `requiredForClosure` action belonging to the investigation
+  has a status other than `Completed`/`Verified`/`Cancelled` (`data-model.md` §6.9.3,
+  `investigation-workflow.md` §9.6) — the blocking actions are listed and linked; non-required open
+  actions instead require an explicit Reviewer acknowledgment checkbox before Approve enables.
+- **Success Behavior**: Investigation closes; the report (FR-056) is now presented as final, no longer
   draft-watermarked.
-- **Error Behavior**: Attempting to approve an investigation not in `UNDER_REVIEW` (e.g., a stale
-  page) is rejected with a clear message and the page refreshes to the current state.
+- **Error Behavior**: Attempting to approve an investigation not in `Review` (e.g., a stale page) is
+  rejected with a clear message and the page refreshes to the current state; attempting to approve
+  with unresolved required actions is rejected the same way if it somehow reaches the server despite
+  the disabled button.
 - **Empty State**: N/A.
-- **Edge Cases**: An ADMIN using the emergency override records the same `ReviewLog` entry, attributed
-  to that ADMIN, so the audit trail (module 25) always shows who actually approved it.
+- **Edge Cases**: **(Closes SR-021)** This is one of two distinct ADMIN-usable escalations from
+  `Review`, both scoped to firing only from `Review` status (`investigation-workflow.md` §7.2): (1)
+  this FR — an ADMIN acting *in place of* a Reviewer, approving normally, **still subject to** the
+  `requiredForClosure` gate above — and (2) FR-053's separate "Override and Close" control, ADMIN-only,
+  which is the *only* path that bypasses that gate. They are not the same action described twice; an
+  ADMIN using this FR (rather than the override) records the same `InvestigationReview` entry an
+  ordinary Reviewer approval would, attributed to that ADMIN, so the audit trail (module 25) always
+  shows who actually approved it and whether the gate was honored or explicitly bypassed.
 
 ### FR-052 — Request Changes
 - **Purpose**: Send an investigation back to the investigator with specific, recorded feedback.
 - **User**: REVIEWER (ADMIN retains an emergency override).
 - **Inputs**: Comment (required).
-- **Outputs**: `ReviewLog` entry (`reviewStatus = ChangesRequested`); investigation status →
-  `CHANGES_REQUESTED`.
-- **Validation Rules**: Only valid from `UNDER_REVIEW` status. Comment required, minimum 10
-  characters (a rejection with no substantive feedback is not useful to the investigator).
-- **Success Behavior**: Status updates; the investigator sees the comment prominently and an explicit
-  "Resume Editing" action to move back to `OPEN` (`investigation-workflow.md` §5, step 3 — an explicit
-  button, not an automatic transition on first edit, to keep the review record unambiguous).
-- **Error Behavior**: Missing/too-short comment blocks submission with an inline message.
+- **Outputs**: `InvestigationReview` entry (`reviewDecision = ChangesRequested`); investigation status
+  → `Analysis` (`investigation-workflow.md` §6 — directly, immediately editable again; there is no
+  intermediate stored status and no separate "Resume Editing" ceremony, since "changes requested" is
+  a review *decision*, not an investigation status, per §0.3).
+- **Validation Rules**: Only valid from `Review` status. Comment required, minimum 10 characters (a
+  rejection with no substantive feedback is not useful to the investigator).
+- **Success Behavior**: Status updates immediately; the investigator sees the comment prominently on
+  the Review section; the investigation must satisfy FR-049's gate again and be resubmitted to reach
+  `Review` a second time (`investigation-workflow.md` §7.1 — no forward-skipping back into `Review`).
+- **Error Behavior**: Missing/too-short comment blocks submission with an inline message; an attempt
+  from a status other than `Review` is rejected with a clear message.
 - **Empty State**: N/A.
 - **Edge Cases**: Multiple review cycles (submit → changes requested → resubmit → …) are all recorded
-  as separate `ReviewLog` entries, giving a complete history in the final report (module 25).
+  as separate `InvestigationReview` entries, giving a complete history in the final report (module
+  25).
 
 ---
 
 ## 22. Investigation Closure
 
+**Revision note (Phase 10, closing SR-003)**: rewritten in place to the current 6-state model and
+`Investigation` entity name. FR-053a is newly added (lettered suffix per §0.1, since it is closely
+related to FR-053) to give SR-021's second escalation path — the closure-gate override — its own
+requirement rather than leaving it undocumented.
+
 ### FR-053 — Close Investigation (System Behavior on Approval)
 - **Purpose**: Define exactly what "closed" means and guarantees for the record.
 - **User**: System-triggered by FR-051 (no independent user-initiated "close" action exists outside
-  of approval, by design — closure is always the outcome of a review decision, never a shortcut).
+  of approval or FR-053a's override, by design — closure is always the outcome of a review decision
+  or an explicit, justified override, never a bare shortcut).
 - **Inputs**: N/A (triggered by FR-051).
-- **Outputs**: `Incident.status = CLOSED`, `closedAt` timestamp set.
-- **Validation Rules**: Only reachable via FR-051.
+- **Outputs**: `Investigation.status = Closed`, `closedAt` timestamp set.
+- **Validation Rules**: Only reachable via FR-051 (or FR-053a).
 - **Success Behavior**: All data sections become read-only (FR-011); the report (FR-056) is presented
   as final.
-- **Error Behavior**: N/A (this is a derived consequence of FR-051, which carries its own error
-  handling).
+- **Error Behavior**: N/A (this is a derived consequence of FR-051/FR-053a, which carry their own
+  error handling).
 - **Empty State**: N/A.
 - **Edge Cases**: N/A.
 
+### FR-053a — Override and Close (Administrator Closure-Gate Bypass)
+- **Purpose**: Let an Administrator close an investigation despite unresolved `requiredForClosure`
+  actions, for genuine operational necessity, while making the bypass impossible to miss in the audit
+  trail — the second of SR-021's two distinct `Review`-scoped escalations (see FR-051's Edge Cases).
+- **User**: ADMIN only (not available to REVIEWER, even acting under FR-051's ordinary override —
+  ordinary approval, by anyone, always honors the gate).
+- **Inputs**: Justification (required free text, minimum 20 characters, `data-model.md` §6.9.3).
+- **Outputs**: `InvestigationReview` entry (`reviewDecision = Approved`, attributed to the acting
+  ADMIN); investigation status → `Closed`; `closedAt` set; an `InvestigationHistory` entry
+  (`eventType = Closed`, the justification recorded in `reasonText`) — so the bypass is never silent
+  (`data-model.md` §6.9.3).
+- **Validation Rules**: Only valid from `Review` status (same scope as FR-051 — `investigation-workflow.md`
+  §7.2). Justification required, minimum 20 characters. Unlike FR-051, this action **ignores** the
+  `requiredForClosure` gate entirely — that is its entire purpose.
+- **Success Behavior**: Investigation closes immediately, bypassing the gate; every `requiredForClosure`
+  action left unresolved at the time remains visible in its own section exactly as it was, still
+  showing its real (non-`Completed`/`Verified`/`Cancelled`) status — the override does not silently
+  mark them resolved.
+- **Error Behavior**: A missing/too-short justification blocks the action with an inline message; an
+  attempt from a status other than `Review`, or by a non-ADMIN, is rejected.
+- **Empty State**: N/A.
+- **Edge Cases**: This control is deliberately visually and functionally distinct from FR-051's
+  "Approve" button (`ui-spec.md` §16's separate "Override and Close" GhostButton) so it is never
+  clicked by accident in place of an ordinary approval.
+
 ### FR-054 — Reopen Closed Investigation
 - **Purpose**: Allow further investigation after closure (new evidence, identified error, etc.).
-- **User**: ADMIN, MANAGER, INVESTIGATOR.
+- **User**: ADMIN, MANAGER, INVESTIGATOR (`investigation-workflow.md` §6 — any Investigator, not
+  restricted to the one assigned to this investigation, since reopening is a re-entry decision, not
+  an ordinary content edit).
 - **Inputs**: Reopen Reason (required, free text).
-- **Outputs**: `Incident.status = OPEN`, `Incident.reopenReason` set, a corresponding audit/history
-  entry recorded (module 25).
-- **Validation Rules**: Only valid from `CLOSED` status. Reopen Reason required, minimum 10
+- **Outputs**: `Investigation.status = UnderInvestigation`, `Investigation.reopenReason` set, a
+  corresponding audit/history entry recorded (module 25).
+- **Validation Rules**: Only valid from `Closed` status. Reopen Reason required, minimum 10
   characters.
-- **Success Behavior**: Data sections become editable again (FR-011); the investigation must be
-  resubmitted through FR-049 to close again — reopening never returns directly to `UNDER_REVIEW`
-  (`investigation-workflow.md` §6).
+- **Success Behavior**: Data sections become editable again (FR-011); the investigation re-enters at
+  `UnderInvestigation`, not directly at `Review` or `Analysis` — it must pass through
+  `UnderInvestigation → Analysis → Review` again before it can close a second time
+  (`investigation-workflow.md` §6, §7.1).
 - **Error Behavior**: Missing/too-short reason blocks the action with an inline message.
 - **Empty State**: N/A.
-- **Edge Cases**: Reopening does not clear any previously recorded data — it only unlocks editing; all
-  prior `ReviewLog` history remains visible in the report.
+- **Edge Cases**: Reopening does not clear any previously recorded data — it only unlocks editing and
+  resets the automatic-gate progression starting from `UnderInvestigation`; all prior
+  `InvestigationReview` history remains visible in the report.
 
 ### FR-055 — Delete Draft Investigation
 - **Purpose**: Remove an investigation that was created in error or abandoned before any real work
   began.
 - **User**: ADMIN.
 - **Inputs**: Selected investigation, confirmation.
-- **Outputs**: `Incident` row and all child records permanently removed (cascade, per `data-model.md`
-  §1).
-- **Validation Rules**: Only permitted while status is `DRAFT` (FR-2.7's rationale: once an
-  investigation has moved past Draft, deletion would destroy real investigative work and audit
-  history — reopening/closing is used instead of deletion for anything beyond Draft).
+- **Outputs**: `Investigation` row and all child records permanently removed (cascade, per
+  `data-model.md` §1).
+- **Validation Rules**: Only permitted while status is `Draft` (once an investigation has moved past
+  Draft, deletion would destroy real investigative work and audit history — reopening/closing is used
+  instead of deletion for anything beyond Draft).
 - **Success Behavior**: Investigation disappears from all lists immediately; reference number is not
   reused.
 - **Error Behavior**: Attempting to delete a non-Draft investigation is rejected with an explanation
@@ -1780,13 +1848,17 @@ inconsistency is fixed here.
 
 ## 25. Audit/History Information
 
+**Revision note (Phase 10, closing SR-006)**: FR-062/FR-063's citations into `report-spec.md`
+corrected to that document's current section numbers (its full rewrite moved Appendix C to §6 and
+Reviewer Comments to §5.18; §3 no longer has the §3.18/§3.19 subsections these FRs used to cite).
+
 ### FR-062 — View Investigation Audit Metadata
 - **Purpose**: Show who did what and when at the investigation level.
 - **User**: ADMIN, MANAGER, INVESTIGATOR, REVIEWER (all with view access); VIEWER on non-draft
   investigations.
 - **Inputs**: None (derived from stored fields).
 - **Outputs**: Created By/At, Last Updated At, Closed At (if applicable), Assigned Investigator,
-  displayed on the Overview section and included in the report's Appendix C (`report-spec.md` §3.19).
+  displayed on the Overview section and included in the report's Appendix C (`report-spec.md` §6).
 - **Validation Rules**: N/A (read-only, derived).
 - **Success Behavior**: Reflects the true current values at all times, updated on every relevant
   mutation.
@@ -1800,10 +1872,10 @@ inconsistency is fixed here.
   the final report's sign-off section.
 - **User**: ADMIN, MANAGER, INVESTIGATOR, REVIEWER (all with view access); VIEWER on non-draft
   investigations.
-- **Inputs**: None (derived from `ReviewLog`).
+- **Inputs**: None (derived from `InvestigationReview`).
 - **Outputs**: Timeline of entries — reviewer name, decision (Approved/Changes Requested), comment,
   timestamp — newest first, shown on the Review section (FR-050) and the report (`report-spec.md`
-  §3.18).
+  §5.18).
 - **Validation Rules**: N/A (read-only).
 - **Success Behavior**: Every FR-051/FR-052 action appears here immediately and permanently (no
   edit/delete capability on review history, by design — it is an audit record).
@@ -1827,3 +1899,76 @@ inconsistency is fixed here.
   reopens" line, to avoid cluttering the common case).
 - **Edge Cases**: An investigation reopened multiple times over its life shows every cycle, so a
   reader can see the full back-and-forth between closure and continued investigation.
+
+---
+
+## 26. Investigation Findings *(new module — closes spec-review.md SR-008, Phase 10 of `implementation-plan.md`)*
+
+`data-model.md` §3.21–§3.22 and `ui-spec.md` §10 fully specified this feature with no corresponding
+functional requirements anywhere in this document — the 25-module index ran straight from "Evidence
+Management" to "Immediate Actions." Added as module 26 (appended, not inserted, so no existing
+module number is disturbed per §0.1's permanence rule) with the next available IDs. A Finding is a
+formal, investigator-authored, numbered statement synthesizing the investigation's conclusions for
+the final report — distinct from the granular `Hazard`/`ContributingFactor`/`RootCause` records a
+Finding may cite, and always fully authored and confirmed by a human, never system-generated
+(product-spec §11.1's non-authoritative wording policy concerns *system-generated* content, not this
+entity — data-model.md §3.21).
+
+### FR-072 — Add / Edit Finding
+- **Purpose**: Author a formal, numbered Finding for the final report.
+- **User**: ADMIN, MANAGER, INVESTIGATOR (assigned/owning).
+- **Inputs**: Finding Type (`Cause`/`ContributingFactor`/`RiskObservation`/`Other`), Description (min
+  20 characters), optional multi-select citations of this investigation's own Hazards, Contributing
+  Factors, and Root Causes (`FindingHazardLink`/`FindingContributingFactorLink`/`FindingRootCauseLink`,
+  `data-model.md` §3.22).
+- **Outputs**: New or updated `InvestigationFinding` row; `findingNumber` auto-assigned as the next
+  sequential integer within the investigation for a new Finding (never user-editable, and never
+  reassigned on edit — only on removal, per FR-073).
+- **Validation Rules**: Description and Finding Type required; Description minimum 20 characters.
+  Every cited Hazard/Contributing Factor/Root Cause must belong to the same investigation.
+- **Success Behavior**: Entry added/updated; the numbered card list (`ui-spec.md` §10) re-renders in
+  `findingNumber` order.
+- **Error Behavior**: Standard inline-validation pattern.
+- **Empty State**: "No findings recorded yet" — optional at the data layer (Findings are not part of
+  the Analysis → Review gate, `investigation-workflow.md` §8 — that gate is satisfied by the
+  underlying Hazard/Contributing Factor/Root Cause records; Findings are the human-authored synthesis
+  layered on top) but strongly encouraged before submission via a non-blocking hint.
+- **Edge Cases**: A Finding may cite zero related items (a standalone statement) or several across all
+  three categories; citing is optional aid, not a requirement, mirroring Root Cause's own optional
+  5-Whys/Contributing-Factor links (FR-038).
+
+### FR-073 — Remove Finding
+- **Purpose**: Correct data-entry mistakes while keeping the numbered list contiguous.
+- **User**: ADMIN, MANAGER, INVESTIGATOR (assigned/owning).
+- **Inputs**: Selected Finding, confirmation.
+- **Outputs**: `InvestigationFinding` row and its citation-link rows removed; every remaining Finding
+  with a higher `findingNumber` is renumbered down by one to stay contiguous starting at 1 (the same
+  contiguous-renumbering pattern already used for 5 Whys entries, FR-037); any `EvidenceFindingLink`
+  rows referencing it are also removed (the evidence item itself is untouched — FR-071's Edge Cases).
+- **Validation Rules**: Confirmation required.
+- **Success Behavior**: Removal completes; remaining Findings' numbers stay contiguous.
+- **Error Behavior**: Failed delete shows an error, no partial removal or renumbering occurs.
+- **Empty State**: N/A.
+- **Edge Cases**: Removing a Finding does not delete anything it cited (Hazard, Contributing Factor,
+  Root Cause, or linked Evidence) — only the citation link.
+
+### FR-074 — Cite Hazard / Contributing Factor / Root Cause on a Finding
+- **Purpose**: Trace a Finding back to the specific analytical records that support it.
+- **User**: ADMIN, MANAGER, INVESTIGATOR (assigned/owning) — exercised as part of FR-072's add/edit
+  form, not a separately-reachable action.
+- **Inputs**: One or more existing Hazards, Contributing Factors, and/or Root Causes from the same
+  investigation (independent multi-selects, `ui-spec.md` §10).
+- **Outputs**: `FindingHazardLink`/`FindingContributingFactorLink`/`FindingRootCauseLink` rows created
+  or removed to match the submitted selection (a full resync on every save, not an incremental diff —
+  the same pattern already used for Evidence-Hazard and Root-Cause-Contributing-Factor links).
+- **Validation Rules**: Every cited item must belong to the same investigation as the Finding (checked
+  server-side, not only via a pre-filtered picker).
+- **Success Behavior**: Cited items render as small reference chips on the Finding card
+  (`ui-spec.md` §10); each shows the cited item's own summary text.
+- **Error Behavior**: A citation targeting an item from a different investigation is rejected
+  server-side with a clear message.
+- **Empty State**: A Finding with no citations shows no chips — a fully valid, standalone statement.
+- **Edge Cases**: Removing the cited Hazard/Contributing Factor/Root Cause elsewhere (its own section's
+  Remove action) cascades the citation link away but leaves the Finding itself intact, its chip for
+  that item simply no longer rendered (not shown as "(removed)" — the link row is actually gone, not
+  a dangling reference, since the underlying link table cascades on delete per `data-model.md` §3.22).

@@ -4,13 +4,8 @@ import { CompletenessIndicator, type CompletenessState } from "./CompletenessInd
 /**
  * Section Stepper (ui-spec.md §2.3) — the investigation workspace's left
  * rail, listing all 13 workspace pages (ui-spec.md §3's page-to-module
- * mapping). Overview, Occurrence Details, Aircraft & Flight, Evidence,
- * Witnesses, Hazard Analysis, Contributing Factors, 5 Whys, Root Cause
- * Analysis, and Corrective/Preventive Actions are real routes as of
- * Phases 4-9; the remaining 3 pages arrive in Phases 10-13 and are shown
- * as non-clickable stepper entries (not broken links) until then, with a
- * "Not Started" CompletenessDot — honest about what's actually built
- * rather than linking to 404s.
+ * mapping). Every section is now a real route as of Phase 10 except
+ * Report Preview (Phase 13).
  */
 interface StepperSection {
   key: string;
@@ -30,6 +25,8 @@ export function SectionStepper({
   fiveWhysCompleteness = "not-started",
   rootCauseCompleteness = "not-started",
   actionsCompleteness = "not-started",
+  findingsCompleteness = "not-started",
+  reviewCompleteness = "not-started",
 }: {
   investigationId: number;
   occurrenceCompleteness?: CompletenessState;
@@ -41,6 +38,8 @@ export function SectionStepper({
   fiveWhysCompleteness?: CompletenessState;
   rootCauseCompleteness?: CompletenessState;
   actionsCompleteness?: CompletenessState;
+  findingsCompleteness?: CompletenessState;
+  reviewCompleteness?: CompletenessState;
 }) {
   const sections: StepperSection[] = [
     { key: "overview", label: "Overview", href: `/investigations/${investigationId}`, completeness: "not-started" },
@@ -68,7 +67,12 @@ export function SectionStepper({
       href: `/investigations/${investigationId}/witnesses`,
       completeness: witnessesCompleteness,
     },
-    { key: "findings", label: "Investigation Findings", completeness: "not-started" },
+    {
+      key: "findings",
+      label: "Investigation Findings",
+      href: `/investigations/${investigationId}/findings`,
+      completeness: findingsCompleteness,
+    },
     {
       key: "hazards",
       label: "Hazard Analysis",
@@ -99,7 +103,12 @@ export function SectionStepper({
       href: `/investigations/${investigationId}/actions`,
       completeness: actionsCompleteness,
     },
-    { key: "review", label: "Investigation Review", completeness: "not-started" },
+    {
+      key: "review",
+      label: "Investigation Review",
+      href: `/investigations/${investigationId}/review`,
+      completeness: reviewCompleteness,
+    },
     { key: "report", label: "Report Preview", completeness: "not-started" },
   ];
 
