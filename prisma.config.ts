@@ -6,8 +6,15 @@ import { defineConfig } from "prisma/config";
 // own convention) — without this, the Prisma CLI would silently never see a
 // contributor's local database credentials. Mirrors Next.js's precedence:
 // `.env.local` overrides `.env` when both are present.
-loadEnv({ path: ".env" });
-loadEnv({ path: ".env.local", override: true });
+// `quiet: true` suppresses dotenv's own rotating console "tips" — one of
+// which prints an unrelated third-party URL ("auth for agents
+// [www.vestauth.com]") that reads exactly like a prompt-injection attempt
+// aimed at an AI agent reading terminal output, even though it's really
+// just dotenv's own promotional tip rotation. Found during a Phase 5
+// verification run; nothing in this repo prints it, and no such link was
+// ever followed — silencing it removes a recurring false alarm.
+loadEnv({ path: ".env", quiet: true });
+loadEnv({ path: ".env.local", override: true, quiet: true });
 
 // Prisma 7: the CLI (migrate, studio, db seed) connects using this file, not
 // a datasource.url in schema.prisma. Uses DIRECT_URL (Neon's unpooled
