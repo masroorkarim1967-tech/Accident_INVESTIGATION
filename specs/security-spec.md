@@ -342,12 +342,16 @@ here as the security view of that same design:
 This document was scoped to `security-spec.md` only. The following newly-defined controls are not
 yet reflected in the files that would ultimately implement them, and should be in a follow-up pass:
 
-- **Security headers** (§3): **resolved** — implemented in `next.config.ts`'s `headers()` during the
-  production-readiness pass, and verified present on live responses (including `robots.txt`, which
-  is deliberately exempt from the auth proxy but still gets these headers independently). **Origin-
-  header verification for state-changing Route Handlers** (§4) remains genuinely pending — there is
-  no custom state-changing Route Handler yet to protect (only the Auth.js route exists, which
-  handles its own CSRF); add this when Phase 6 introduces the evidence-upload Route Handler.
+- **Security headers** (§3): **resolved** — `X-Content-Type-Options`, `X-Frame-Options`, and
+  `Referrer-Policy` are set in `next.config.ts`'s `headers()`; `Content-Security-Policy` moved out
+  of that static config and into `proxy.ts` as a per-request nonce during Phase 5's live browser
+  verification, after a static CSP was found to block Next.js's own inline hydration scripts in
+  production (`technical-architecture.md` §4.4's addendum has the full account). All four are
+  verified present on live responses, including `robots.txt`, which is deliberately exempt from the
+  auth proxy but still gets these headers independently. **Origin-header verification for
+  state-changing Route Handlers** (§4) remains genuinely pending — there is no custom
+  state-changing Route Handler yet to protect (only the Auth.js route exists, which handles its own
+  CSRF); add this when Phase 6 introduces the evidence-upload Route Handler.
 - **Least-privilege database role** (§7): still pending — this is a Postgres role/grant configured
   against the actual provisioned production database, not something expressible in application code;
   tracked as a Phase 16 deployment-time action item.
@@ -356,12 +360,13 @@ yet reflected in the files that would ultimately implement them, and should be i
   (`implementation-plan.md`), closing spec-review.md SR-010.
 - **Dependency scanning (Dependabot) and GitHub secret scanning/push protection** (§9, §16):
   `.github/dependabot.yml` was added during Phase 1 (pulled forward since it cost nothing to add
-  early). GitHub secret scanning/push protection are repository *settings*, not files — they can
-  only be enabled once an actual GitHub repository exists (still pending; no `.git` repository has
-  been initialized for this project yet, tracked as a Phase 16 action item alongside the
-  least-privilege database role above).
+  early). GitHub secret scanning/push protection are repository *settings*, not files: a GitHub
+  repository now exists and is the project's origin remote, so these can be enabled directly in its
+  Settings whenever convenient — this is no longer blocked on repository creation, only on someone
+  visiting that settings page. Still tracked as a Phase 16 deployment-time action item alongside the
+  least-privilege database role above, since neither is expressible in application code.
 
-Independent of this pass, the previously-flagged outstanding items remain unaffected:
-`functional-requirements.md`'s old 5-state status names (§0.3, FR-011, FR-049–FR-054), and
-`report-spec.md`'s partially-resolved `InvestigationHistory`/`InvestigationReview` timeline
-interleaving.
+Independent of this pass, `report-spec.md`'s partially-resolved
+`InvestigationHistory`/`InvestigationReview` timeline interleaving remains outstanding.
+`functional-requirements.md`'s status-name sweep (previously flagged here) is resolved — see
+`spec-review.md` §7's confirmation of SR-003.

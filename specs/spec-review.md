@@ -477,3 +477,39 @@ the evidence storage abstraction's *interface* (as opposed to its now-corrected 
 SR-001), and the security architecture's core controls all check out as consistent across every file
 that touches them. No instance of a genuinely new, undocumented external API dependency was found
 beyond the one documentation hedge in SR-023.
+
+## 7. Resolution Status (updated during implementation)
+
+This review is a point-in-time snapshot from before implementation began (§1). It is not
+continuously rewritten as items are resolved — but leaving resolved items listed as open,
+indefinitely, would make this document actively misleading rather than merely stale. This section
+records what a 2026 final-review pass (`Phases 1-5` complete) confirmed against the current
+codebase, without editing the findings above, so both the original review and its current status
+are visible together.
+
+**Confirmed resolved:**
+
+- **SR-003** (5-state model / retired entity names) — `functional-requirements.md` now uses the
+  six-state model throughout (`Draft → Open → UnderInvestigation → Analysis → Review → Closed`,
+  confirmed at §0.3 and every FR-011/FR-049–FR-064 reference checked), matching `data-model.md`,
+  `investigation-workflow.md`, and the `InvestigationStatus` Prisma enum.
+- **SR-004** (duplicate/drifted severity scale) — resolved directly in `functional-requirements.md`
+  FR-066 with an inline note closing this item; `RiskSeverity` now reads
+  `Negligible/Minor/Moderate/Major/Catastrophic` everywhere, including the Prisma enum and the
+  seeded `RiskBandConfiguration` rows.
+- **SR-010** (`LoginAttempt`/`UploadAttempt` referenced but undefined) — `LoginAttempt` was
+  formalized as a `data-model.md` §3.25 entity during Phase 2; `security-spec.md`'s own consistency
+  notes already record this closure. `UploadAttempt` remains undefined, correctly, since evidence
+  upload (Phase 6) is not yet implemented — not a re-opening of this item, just its unimplemented
+  half.
+- **SR-011** ("Continue as Viewer" anonymous-access mechanism) — resolved exactly as this review's
+  own recommended resolution proposed: it authenticates as the seeded Guest Viewer account through
+  a real Auth.js session (`app/(auth)/login/actions.ts`'s `continueAsViewerAction`, which cites this
+  item by ID in its own comment) rather than bypassing authentication.
+
+**Still genuinely open** (accurately so, not stale): every other item, most directly because the
+phases they depend on — Evidence/Witnesses (SR-001, SR-002), Investigation Findings (SR-008), the
+Assistance Engine (SR-009), Root Cause Analysis and Corrective/Preventive Actions (SR-005, SR-021,
+SR-022), and Report Generation (SR-006, SR-007) — have not been implemented yet. These should be
+re-checked against this same section as each phase lands, not assumed resolved by the passage of
+time alone.
