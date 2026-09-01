@@ -160,6 +160,41 @@ enum ConfidenceLevel {
   High
 }
 
+// data-model.md §3.19/§3.20 — shared by CorrectiveAction and PreventiveAction.
+enum ActionPriority {
+  Low
+  Medium
+  High
+  Critical
+}
+
+// data-model.md §6.9.1 — 6 stored values; `Overdue` is derived/display-only
+// (lib/services/overdueComputation.ts), never a stored status.
+enum ActionStatus {
+  Open
+  Assigned
+  InProgress
+  Completed
+  Verified
+  Cancelled
+}
+
+enum VerificationMethod {
+  FollowUpInspection
+  DataReview
+  Audit
+  Retest
+  StakeholderInterview
+  Other
+}
+
+enum EffectivenessResult {
+  Effective
+  PartiallyEffective
+  NotEffective
+  TooEarlyToAssess
+}
+
 enum DamageLevel {
   None
   Minor
@@ -249,6 +284,8 @@ model User {
   classifiedOccurrences    Occurrence[]
   uploadedAttachments      Attachment[]
   fiveWhysAnalysesAuthored FiveWhysAnalysis[]
+  ownedCorrectiveActions   CorrectiveAction[]
+  ownedPreventiveActions   PreventiveAction[]
 
   @@index([role])
 }
@@ -282,6 +319,8 @@ model Investigation {
   contributingFactors  ContributingFactor[]
   fiveWhysAnalyses     FiveWhysAnalysis[]
   rootCauses           RootCause[]
+  correctiveActions    CorrectiveAction[]
+  preventiveActions    PreventiveAction[]
 
   @@index([status])
   @@index([assignedInvestigatorUserId])
@@ -521,6 +560,8 @@ model Hazard {
 
   investigation           Investigation                  @relation(fields: [investigationId], references: [id], onDelete: Cascade)
   contributingFactorLinks ContributingFactorHazardLink[]
+  correctiveActions       CorrectiveAction[]
+  preventiveActions       PreventiveAction[]
 
   @@index([investigationId])
   @@index([initialRiskBand])
@@ -606,6 +647,8 @@ model RootCause {
   investigation           Investigation                     @relation(fields: [investigationId], references: [id], onDelete: Cascade)
   fiveWhysAnalysis        FiveWhysAnalysis?                 @relation(fields: [fiveWhysAnalysisId], references: [id], onDelete: SetNull)
   contributingFactorLinks RootCauseContributingFactorLink[]
+  correctiveActions       CorrectiveAction[]
+  preventiveActions       PreventiveAction[]
 
   @@index([investigationId])
 }
@@ -619,6 +662,77 @@ model RootCauseContributingFactorLink {
   contributingFactor ContributingFactor @relation(fields: [contributingFactorId], references: [id], onDelete: Cascade)
 
   @@id([rootCauseId, contributingFactorId])
+}
+
+// data-model.md §3.19 — FR-040/FR-041, §6.9's status lifecycle. The
+// `(ownerUserId IS NOT NULL) <> (ownerExternalName IS NOT NULL)` CHECK is
+// enforced at the application/validation layer only (Prisma has no
+// declarative CHECK syntax) — same precedent as Hazard's residual-pair
+// and RootCause's conditional-required fields.
+model CorrectiveAction {
+  id                   Int                  @id @default(autoincrement())
+  investigationId      Int
+  description          String               @db.Text
+  priority             ActionPriority
+  status               ActionStatus         @default(Open)
+  targetDate           DateTime             @db.Date
+  completedDate        DateTime?            @db.Date
+  verificationMethod   VerificationMethod?
+  verificationNotes    String?              @db.Text
+  effectivenessResult  EffectivenessResult?
+  investigatorComments String?              @db.Text
+  ownerUserId          Int?
+  ownerExternalName    String?              @db.VarChar(150)
+  department           String?              @db.VarChar(100)
+  rootCauseId          Int?
+  hazardId             Int?
+  requiredForClosure   Boolean              @default(true)
+
+  investigation Investigation @relation(fields: [investigationId], references: [id], onDelete: Cascade)
+  owner         User?         @relation(fields: [ownerUserId], references: [id])
+  rootCause     RootCause?    @relation(fields: [rootCauseId], references: [id], onDelete: SetNull)
+  hazard        Hazard?       @relation(fields: [hazardId], references: [id], onDelete: SetNull)
+
+  @@index([investigationId])
+  @@index([status])
+  @@index([targetDate])
+  @@index([ownerUserId])
+  @@index([requiredForClosure, status])
+}
+
+// data-model.md §3.20 — FR-042/FR-043. Mirrors CorrectiveAction exactly,
+// except requiredForClosure defaults false (data-model.md §3.20's
+// rationale: preventive measures often extend past this investigation's
+// own closure).
+model PreventiveAction {
+  id                   Int                  @id @default(autoincrement())
+  investigationId      Int
+  description          String               @db.Text
+  priority             ActionPriority
+  status               ActionStatus         @default(Open)
+  targetDate           DateTime             @db.Date
+  completedDate        DateTime?            @db.Date
+  verificationMethod   VerificationMethod?
+  verificationNotes    String?              @db.Text
+  effectivenessResult  EffectivenessResult?
+  investigatorComments String?              @db.Text
+  ownerUserId          Int?
+  ownerExternalName    String?              @db.VarChar(150)
+  department           String?              @db.VarChar(100)
+  hazardId             Int?
+  rootCauseId          Int?
+  requiredForClosure   Boolean              @default(false)
+
+  investigation Investigation @relation(fields: [investigationId], references: [id], onDelete: Cascade)
+  owner         User?         @relation(fields: [ownerUserId], references: [id])
+  hazard        Hazard?       @relation(fields: [hazardId], references: [id], onDelete: SetNull)
+  rootCause     RootCause?    @relation(fields: [rootCauseId], references: [id], onDelete: SetNull)
+
+  @@index([investigationId])
+  @@index([status])
+  @@index([targetDate])
+  @@index([ownerUserId])
+  @@index([requiredForClosure, status])
 }
 
 // data-model.md §6.4 — configurable risk-band matrix. Seeded with the

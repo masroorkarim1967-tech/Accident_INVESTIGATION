@@ -153,6 +153,8 @@ export async function getInvestigationDetail(id: number, currentUser: { id: numb
           contributingFactors: true,
           fiveWhysAnalyses: true,
           rootCauses: true,
+          correctiveActions: true,
+          preventiveActions: true,
         },
       },
     },

@@ -5,11 +5,12 @@ import { CompletenessIndicator, type CompletenessState } from "./CompletenessInd
  * Section Stepper (ui-spec.md §2.3) — the investigation workspace's left
  * rail, listing all 13 workspace pages (ui-spec.md §3's page-to-module
  * mapping). Overview, Occurrence Details, Aircraft & Flight, Evidence,
- * Witnesses, Hazard Analysis, Contributing Factors, 5 Whys, and Root
- * Cause Analysis are real routes as of Phases 4-8; the remaining 4 pages
- * arrive in Phases 9-13 and are shown as non-clickable stepper entries
- * (not broken links) until then, with a "Not Started" CompletenessDot —
- * honest about what's actually built rather than linking to 404s.
+ * Witnesses, Hazard Analysis, Contributing Factors, 5 Whys, Root Cause
+ * Analysis, and Corrective/Preventive Actions are real routes as of
+ * Phases 4-9; the remaining 3 pages arrive in Phases 10-13 and are shown
+ * as non-clickable stepper entries (not broken links) until then, with a
+ * "Not Started" CompletenessDot — honest about what's actually built
+ * rather than linking to 404s.
  */
 interface StepperSection {
   key: string;
@@ -28,6 +29,7 @@ export function SectionStepper({
   contributingFactorsCompleteness = "not-started",
   fiveWhysCompleteness = "not-started",
   rootCauseCompleteness = "not-started",
+  actionsCompleteness = "not-started",
 }: {
   investigationId: number;
   occurrenceCompleteness?: CompletenessState;
@@ -38,6 +40,7 @@ export function SectionStepper({
   contributingFactorsCompleteness?: CompletenessState;
   fiveWhysCompleteness?: CompletenessState;
   rootCauseCompleteness?: CompletenessState;
+  actionsCompleteness?: CompletenessState;
 }) {
   const sections: StepperSection[] = [
     { key: "overview", label: "Overview", href: `/investigations/${investigationId}`, completeness: "not-started" },
@@ -90,7 +93,12 @@ export function SectionStepper({
       href: `/investigations/${investigationId}/root-causes`,
       completeness: rootCauseCompleteness,
     },
-    { key: "actions", label: "Corrective/Preventive Actions", completeness: "not-started" },
+    {
+      key: "actions",
+      label: "Corrective/Preventive Actions",
+      href: `/investigations/${investigationId}/actions`,
+      completeness: actionsCompleteness,
+    },
     { key: "review", label: "Investigation Review", completeness: "not-started" },
     { key: "report", label: "Report Preview", completeness: "not-started" },
   ];

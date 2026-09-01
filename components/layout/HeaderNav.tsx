@@ -29,7 +29,7 @@ export function HeaderNav({
       <Link href="/investigations" className="text-muted hover:text-teal">
         Investigations
       </Link>
-      <Link href="/actions-tracker" className="text-muted hover:text-teal">
+      <Link href="/action-tracker" className="text-muted hover:text-teal">
         Action Tracker
       </Link>
       <Link
