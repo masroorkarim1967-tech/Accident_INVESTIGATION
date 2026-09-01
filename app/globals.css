@@ -1,0 +1,66 @@
+@import "tailwindcss";
+
+/*
+ * Ops Board design tokens (ui-spec.md §1.1-1.3).
+ * Dark theme is the default identity; a light theme overrides these same
+ * variables under [data-theme="light"] rather than via prefers-color-scheme,
+ * because the theme is an explicit user toggle (Settings, ui-spec.md §18),
+ * not an OS-preference follow.
+ */
+@theme {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, "SFMono-Regular", monospace;
+
+  --color-background: #0b1220;
+  --color-surface: #101a2c;
+  --color-border: #223047;
+  --color-foreground: #e6edf7;
+  --color-muted: #8a97ab;
+
+  --color-amber: #f5a623;
+  --color-amber-muted: #b5791a;
+  --color-teal: #2dd4bf;
+  --color-green: #22c55e;
+  --color-orange: #f97316;
+  --color-red: #ef4444;
+  --color-blue: #3b82f6;
+  --color-slate: #64748b;
+  --color-violet: #8b5cf6;
+}
+
+:root[data-theme="light"] {
+  --color-background: #f4f6fb;
+  --color-surface: #ffffff;
+  --color-border: #d7deea;
+  --color-foreground: #101a2c;
+  --color-muted: #5b6577;
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+}
+
+/*
+ * Radar-sweep animation (ui-spec.md §1.5) — the one deliberately decorative
+ * touch, confined to the Login/Welcome page's hero panel only.
+ */
+@keyframes radar-sweep {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.radar-sweep {
+  background: conic-gradient(from 0deg, transparent 0deg, var(--color-teal) 25deg, transparent 60deg);
+  animation: radar-sweep 4s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .radar-sweep {
+    animation: none;
+  }
+}

@@ -1,0 +1,216 @@
+// Prisma schema — Aviation Incident Investigation Assistant
+//
+// Phase 2 (Database) scope only: User, Investigation, InvestigationHistory,
+// LoginAttempt, and the Auth.js adapter tables (Account, Session,
+// VerificationToken). Every other entity in data-model.md §3 is added in the
+// phase that first needs it, per implementation-plan.md's incremental-schema
+// approach — this keeps each phase independently verifiable.
+//
+// Source of truth: data-model.md §3.1 (User), §3.2 (Investigation),
+// §3.24 (InvestigationHistory); LoginAttempt is new, added to close
+// spec-review.md SR-010. technical-architecture.md §5.2 explains why native
+// Postgres enums are used here in place of data-model.md's CHECK-constrained
+// VARCHAR convention (DM-5) — an explicitly documented, safe upgrade path.
+
+// Prisma 7 requires an explicit generator output path and configures the
+// connection via prisma.config.ts + a driver adapter rather than a
+// datasource.url/directUrl field (both removed in v7). See
+// technical-architecture.md §5.2's addendum for why this differs from the
+// datasource-block pattern that document originally illustrated — the
+// environment variables and Neon/pooling architecture are unchanged, only
+// the file that wires them up is different.
+generator client {
+  provider = "prisma-client"
+  output   = "./generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// --- Enumerations -----------------------------------------------------
+
+enum UserRole {
+  Administrator
+  InvestigationManager
+  Investigator
+  Reviewer
+  Viewer
+}
+
+enum InvestigationStatus {
+  Draft
+  Open
+  UnderInvestigation
+  Analysis
+  Review
+  Closed
+}
+
+enum HistoryEventType {
+  Created
+  InvestigatorAssigned
+  InvestigatorReassigned
+  StageAdvanced
+  SubmittedForReview
+  ReviewApproved
+  ReviewChangesRequested
+  Reopened
+  Closed
+  DraftDeleted
+}
+
+enum LoginAttemptType {
+  Login
+  Upload
+}
+
+// --- Core entities ------------------------------------------------------
+
+// data-model.md §3.1
+model User {
+  id           Int      @id @default(autoincrement())
+  name         String   @db.VarChar(150)
+  email        String   @unique @db.VarChar(254)
+  passwordHash String   @db.VarChar(255)
+  role         UserRole
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  createdInvestigations  Investigation[]        @relation("InvestigationCreatedBy")
+  assignedInvestigations Investigation[]        @relation("InvestigationAssignedTo")
+  historyEntries         InvestigationHistory[]
+  loginAttempts          LoginAttempt[]
+  accounts               Account[]
+  sessions               Session[]
+
+  @@index([role])
+}
+
+// data-model.md §3.2 (was `Incident`)
+model Investigation {
+  id                         Int                 @id @default(autoincrement())
+  referenceNumber            String              @unique @db.VarChar(20)
+  title                      String              @db.VarChar(200)
+  status                     InvestigationStatus @default(Draft)
+  reporterName               String              @db.VarChar(150)
+  createdByUserId            Int
+  assignedInvestigatorUserId Int?
+  createdAt                  DateTime            @default(now())
+  updatedAt                  DateTime            @updatedAt
+  closedAt                   DateTime?
+  reopenReason               String?
+
+  createdBy            User                   @relation("InvestigationCreatedBy", fields: [createdByUserId], references: [id])
+  assignedInvestigator User?                  @relation("InvestigationAssignedTo", fields: [assignedInvestigatorUserId], references: [id])
+  historyEntries       InvestigationHistory[]
+  occurrence           Occurrence?
+
+  @@index([status])
+  @@index([assignedInvestigatorUserId])
+  @@index([createdByUserId])
+}
+
+// data-model.md §3.3 — MINIMAL slice only, added in Phase 4 because FR-005
+// ("Create New Investigation") requires persisting an initial occurrence
+// date at creation time, before Phase 5 builds the rest of this table's
+// ~15 fields (classification, actual/potential outcome, risk, narrative,
+// etc.). Phase 5's migration ALTERs this table to add them rather than
+// creating it from scratch — see data-model.md §3.3's Phase 4 addendum.
+model Occurrence {
+  investigationId   Int      @id
+  occurrenceDateUtc DateTime
+
+  investigation Investigation @relation(fields: [investigationId], references: [id], onDelete: Cascade)
+}
+
+// New this phase — backs the per-year reference-number sequence
+// (data-model.md §3.2's DM-16 addendum, closing spec-review.md SR-013).
+model ReferenceNumberSequence {
+  year      Int @id
+  nextValue Int @default(1)
+}
+
+// data-model.md §3.24 — append-only audit log.
+// `relatedReviewId` (FK -> InvestigationReview) is deferred to Phase 10,
+// when InvestigationReview is introduced; adding it now would require a
+// relation to a model that does not yet exist in this phase's schema.
+model InvestigationHistory {
+  id                Int                  @id @default(autoincrement())
+  investigationId   Int
+  eventType         HistoryEventType
+  fromStatus        InvestigationStatus?
+  toStatus          InvestigationStatus?
+  performedByUserId Int
+  reasonText        String?
+  occurredAt        DateTime             @default(now())
+
+  investigation Investigation @relation(fields: [investigationId], references: [id], onDelete: Cascade)
+  performedBy   User          @relation(fields: [performedByUserId], references: [id])
+
+  @@index([investigationId, occurredAt])
+}
+
+// New this phase — closes spec-review.md SR-010 ("LoginAttempt referenced
+// by technical-architecture.md §8 and security-spec.md §14 but never
+// modeled"). Covers both rate-limiting use cases security-spec.md §14
+// describes (login attempts and upload attempts) via `attemptType`.
+model LoginAttempt {
+  id          Int              @id @default(autoincrement())
+  identifier  String           @db.VarChar(254) // email (Login) or a stable per-user key (Upload)
+  ipAddress   String?          @db.VarChar(45) // IPv6-safe length
+  attemptType LoginAttemptType
+  succeeded   Boolean
+  userId      Int?
+  attemptedAt DateTime         @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([identifier, attemptedAt])
+  @@index([ipAddress, attemptedAt])
+}
+
+// --- Auth.js adapter tables (technical-architecture.md §4.4) ------------
+//
+// Standard @auth/prisma-adapter shape, adapted so the `userId` foreign keys
+// match User.id's Int type from data-model.md §3.1 rather than the
+// adapter's usual String-cuid default. Account/Session/VerificationToken
+// are not entities data-model.md defines — they are infrastructure this
+// phase adds because technical-architecture.md §4.4 requires database
+// sessions via the Prisma adapter.
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            Int
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       Int
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
