@@ -26,6 +26,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient, UserRole } from "./generated/prisma/client";
 import bcrypt from "bcryptjs";
 import { DEMO_PASSWORD, GUEST_VIEWER_EMAIL } from "../lib/data/demoAccounts";
+import { OCCURRENCE_TAXONOMY, DEFAULT_RISK_BANDS } from "../lib/data/occurrenceTaxonomy";
 
 // Standalone script (run via `tsx`, not Next.js), so it builds its own
 // PrismaClient rather than importing lib/db.ts's singleton — and uses a
@@ -59,6 +60,34 @@ async function main() {
   }
 
   console.log(`Seeded ${DEMO_USERS.length} demo user accounts.`);
+
+  // data-model.md §6.6 — 14-category occurrence classification taxonomy.
+  let subcategoryCount = 0;
+  for (const [category, subcategories] of Object.entries(OCCURRENCE_TAXONOMY)) {
+    for (const [index, subcategory] of subcategories.entries()) {
+      await prisma.occurrenceSubcategoryOption.upsert({
+        where: { category_subcategory: { category: category as never, subcategory } },
+        update: {},
+        create: { category: category as never, subcategory, displayOrder: index },
+      });
+      subcategoryCount += 1;
+    }
+  }
+  console.log(`Seeded ${subcategoryCount} occurrence subcategory options.`);
+
+  // data-model.md §6.4 — default configurable risk bands. No natural
+  // DB-level unique key (bandLabel is only "unique among active rows" as
+  // an application rule, data-model.md §6.4), so idempotency here means
+  // "seed only if the table is currently empty" rather than per-row
+  // upsert — correct for a fresh database, and does not fight a Phase 7
+  // Administrator's later edits to these rows (FR-069) on a reseed.
+  const existingBandCount = await prisma.riskBandConfiguration.count();
+  if (existingBandCount === 0) {
+    await prisma.riskBandConfiguration.createMany({ data: DEFAULT_RISK_BANDS });
+    console.log(`Seeded ${DEFAULT_RISK_BANDS.length} risk band configuration rows.`);
+  } else {
+    console.log("Risk band configuration already seeded — skipped.");
+  }
 }
 
 main()

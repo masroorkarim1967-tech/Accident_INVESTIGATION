@@ -945,9 +945,11 @@ outcome distinction, and the computed risk-level/priority fields defined in `dat
   plausibly have happened — the basis for this occurrence's computed risk level and investigation
   priority (`data-model.md` §6.6).
 - **User**: ADMIN, MANAGER, INVESTIGATOR (assigned/owning).
-- **Inputs**: Actual Outcome Severity (`Negligible`/`Minor`/`Major`/`Hazardous`/`Catastrophic`) +
-  Actual Outcome Description (text); Potential Outcome Severity (same scale) + Potential Outcome
-  Description (text); Likelihood of Recurrence (`Rare`…`AlmostCertain`).
+- **Inputs**: Actual Outcome Severity (`Negligible`/`Minor`/`Moderate`/`Major`/`Catastrophic` —
+  **corrected Phase 5 to close spec-review.md SR-004**; this line previously listed the retired
+  `Hazardous` value data-model.md DM-12 replaced with `Moderate`) + Actual Outcome Description
+  (text); Potential Outcome Severity (same scale) + Potential Outcome Description (text); Likelihood
+  of Recurrence (`Rare`…`AlmostCertain`).
 - **Outputs**: Persisted `actualOutcomeSeverity`/`actualOutcomeDescription`/
   `potentialOutcomeSeverity`/`potentialOutcomeDescription`/`likelihoodOfRecurrence` on `Occurrence`;
   triggers recomputation of `severity`, `riskScore`/`riskBand`, and `investigationPriority` (FR-067).

@@ -65,6 +65,102 @@ enum LoginAttemptType {
   Upload
 }
 
+// --- Phase 5 enumerations (data-model.md §2.3-§2.7, §5, §6) --------------
+
+enum PhaseOfFlight {
+  Standing
+  Taxi
+  Takeoff
+  InitialClimb
+  Climb
+  Cruise
+  Descent
+  Approach
+  Landing
+  GoAround
+  PostLandingTaxi
+}
+
+// data-model.md §6.6 — 14-value occurrence classification taxonomy.
+// Regulator-neutrality disclaimer: product-spec.md §11.4.
+enum OccurrenceCategory {
+  AircraftIncident
+  GroundHandlingIncident
+  RampSafetyIncident
+  BaggageIncident
+  CargoIncident
+  DangerousGoodsIncident
+  PassengerHandlingIncident
+  SecurityRelatedOccurrence
+  OccupationalSafetyIncident
+  EquipmentVehicleIncident
+  MaintenanceRelatedOccurrence
+  EnvironmentalOccurrence
+  NearMiss
+  Other
+}
+
+// data-model.md §5 — shared severity vocabulary (Hazard, Occurrence outcomes).
+// Corrected per spec-review.md SR-004: `Hazardous` replaced by `Moderate`.
+enum RiskSeverity {
+  Negligible
+  Minor
+  Moderate
+  Major
+  Catastrophic
+}
+
+enum RiskLikelihood {
+  Rare
+  Unlikely
+  Possible
+  Likely
+  AlmostCertain
+}
+
+enum InvestigationPriority {
+  Routine
+  Elevated
+  Urgent
+  Immediate
+}
+
+enum DamageLevel {
+  None
+  Minor
+  Substantial
+  Destroyed
+}
+
+enum InjuryLevel {
+  None
+  Minor
+  Serious
+  Fatal
+}
+
+enum FlightRules {
+  VFR
+  IFR
+}
+
+enum PersonRoleType {
+  PIC
+  FirstOfficer
+  CabinCrew
+  ATC
+  GroundStaff
+  Maintenance
+  Passenger
+  Other
+}
+
+enum ImmediateActionType {
+  Safety
+  Operational
+  Notification
+}
+
 // --- Core entities ------------------------------------------------------
 
 // data-model.md §3.1
@@ -83,6 +179,7 @@ model User {
   loginAttempts          LoginAttempt[]
   accounts               Account[]
   sessions               Session[]
+  classifiedOccurrences  Occurrence[]
 
   @@index([role])
 }
@@ -105,23 +202,174 @@ model Investigation {
   assignedInvestigator User?                  @relation("InvestigationAssignedTo", fields: [assignedInvestigatorUserId], references: [id])
   historyEntries       InvestigationHistory[]
   occurrence           Occurrence?
+  aircraft             Aircraft?
+  flight               Flight?
+  location             Location?
+  persons              Person[]
+  immediateActions     ImmediateAction[]
 
   @@index([status])
   @@index([assignedInvestigatorUserId])
   @@index([createdByUserId])
 }
 
-// data-model.md §3.3 — MINIMAL slice only, added in Phase 4 because FR-005
-// ("Create New Investigation") requires persisting an initial occurrence
-// date at creation time, before Phase 5 builds the rest of this table's
-// ~15 fields (classification, actual/potential outcome, risk, narrative,
-// etc.). Phase 5's migration ALTERs this table to add them rather than
-// creating it from scratch — see data-model.md §3.3's Phase 4 addendum.
+// data-model.md §3.3. The Phase 4 addendum created this table early with
+// only investigationId/occurrenceDateUtc (FR-005's own dependency on it);
+// this phase's migration ALTERs it to add every remaining field.
 model Occurrence {
-  investigationId   Int      @id
-  occurrenceDateUtc DateTime
+  investigationId Int @id
+
+  occurrenceDateUtc    DateTime
+  occurrenceTimeUtc    DateTime?      @db.Time
+  occurrenceTimeLocal  DateTime?      @db.Time
+  phaseOfFlight        PhaseOfFlight?
+  briefDescription     String?        @db.VarChar(240)
+  narrativeDescription String?        @db.Text
+
+  occurrenceCategory            OccurrenceCategory?
+  occurrenceSubcategoryId       Int?
+  actualOutcomeSeverity         RiskSeverity?
+  actualOutcomeDescription      String?                @db.Text
+  potentialOutcomeSeverity      RiskSeverity?
+  potentialOutcomeDescription   String?                @db.Text
+  likelihoodOfRecurrence        RiskLikelihood?
+  severity                      RiskSeverity?
+  severityOverridden            Boolean                @default(false)
+  severityOverrideJustification String?                @db.Text
+  riskScore                     Int?
+  riskBand                      String?                @db.VarChar(20)
+  investigationPriority         InvestigationPriority?
+  priorityOverridden            Boolean                @default(false)
+  priorityOverrideJustification String?                @db.Text
+  suggestedCategory             OccurrenceCategory?
+  suggestedSubcategoryId        Int?
+  wasSuggestionAccepted         Boolean?
+  classifiedByUserId            Int?
+  classifiedAt                  DateTime?
+
+  noPersonsInvolvedConfirmed   Boolean @default(false)
+  noWitnessesConfirmed         Boolean @default(false)
+  noEvidenceAvailableConfirmed Boolean @default(false)
+
+  investigation         Investigation                @relation(fields: [investigationId], references: [id], onDelete: Cascade)
+  occurrenceSubcategory OccurrenceSubcategoryOption? @relation("OccurrenceSubcategory", fields: [occurrenceSubcategoryId], references: [id])
+  suggestedSubcategory  OccurrenceSubcategoryOption? @relation("OccurrenceSuggestedSubcategory", fields: [suggestedSubcategoryId], references: [id], onDelete: SetNull)
+  classifiedBy          User?                        @relation(fields: [classifiedByUserId], references: [id])
+
+  @@index([occurrenceCategory])
+  @@index([riskBand])
+}
+
+// data-model.md §3.3.1 — controlled-vocabulary lookup, seeded at deploy
+// time (data-model.md §6.6). Not user-editable through any FR.
+model OccurrenceSubcategoryOption {
+  id           Int                @id @default(autoincrement())
+  category     OccurrenceCategory
+  subcategory  String             @db.VarChar(80)
+  displayOrder Int                @default(0)
+  isActive     Boolean            @default(true)
+
+  classifiedOccurrences  Occurrence[] @relation("OccurrenceSubcategory")
+  suggestedOnOccurrences Occurrence[] @relation("OccurrenceSuggestedSubcategory")
+
+  @@unique([category, subcategory])
+  @@index([category])
+}
+
+// data-model.md §3.4
+model Aircraft {
+  investigationId   Int         @id
+  registration      String      @db.VarChar(20)
+  manufacturer      String      @db.VarChar(100)
+  model             String      @db.VarChar(100)
+  serialNumber      String?     @db.VarChar(50)
+  yearOfManufacture Int?
+  operatorName      String      @db.VarChar(150)
+  engineType        String?     @db.VarChar(100)
+  engineCount       Int         @default(1)
+  damageLevel       DamageLevel @default(None)
 
   investigation Investigation @relation(fields: [investigationId], references: [id], onDelete: Cascade)
+}
+
+// data-model.md §3.5
+model Flight {
+  investigationId      Int         @id
+  flightNumber         String?     @db.VarChar(20)
+  flightRules          FlightRules
+  departureAerodrome   String      @db.VarChar(100)
+  destinationAerodrome String      @db.VarChar(100)
+  alternateAerodrome   String?     @db.VarChar(100)
+  picName              String      @db.VarChar(150)
+  picLicenseNumber     String?     @db.VarChar(50)
+  crewComplement       Int         @default(1)
+
+  investigation Investigation @relation(fields: [investigationId], references: [id], onDelete: Cascade)
+}
+
+// data-model.md §3.6
+model Location {
+  investigationId     Int      @id
+  locationDescription String   @db.Text
+  latitude            Decimal? @db.Decimal(9, 6)
+  longitude           Decimal? @db.Decimal(9, 6)
+  aerodromeCode       String?  @db.VarChar(10)
+  weatherVisibility   String?  @db.VarChar(50)
+  windSpeedKt         Int?
+  windDirectionDeg    Int?
+  cloudCover          String?  @db.VarChar(50)
+  temperatureC        Int?
+  precipitation       String?  @db.VarChar(50)
+  runwayInUse         String?  @db.VarChar(20)
+  lightingConditions  String   @db.VarChar(10)
+  terrainType         String?  @db.VarChar(50)
+
+  investigation Investigation @relation(fields: [investigationId], references: [id], onDelete: Cascade)
+}
+
+// data-model.md §3.7
+model Person {
+  id              Int            @id @default(autoincrement())
+  investigationId Int
+  name            String         @db.VarChar(150)
+  roleType        PersonRoleType
+  licenseNumber   String?        @db.VarChar(50)
+  nationality     String?        @db.VarChar(60)
+  injuryLevel     InjuryLevel    @default(None)
+  notes           String?        @db.Text
+
+  investigation Investigation @relation(fields: [investigationId], references: [id], onDelete: Cascade)
+
+  @@index([investigationId])
+}
+
+// data-model.md §3.11
+model ImmediateAction {
+  id              Int                 @id @default(autoincrement())
+  investigationId Int
+  description     String              @db.Text
+  takenBy         String              @db.VarChar(150)
+  occurredAt      DateTime
+  actionType      ImmediateActionType
+
+  investigation Investigation @relation(fields: [investigationId], references: [id], onDelete: Cascade)
+
+  @@index([investigationId])
+}
+
+// data-model.md §6.4 — configurable risk-band matrix. Seeded with the
+// default Low/Moderate/High/Critical bands; Administrator edit UI is
+// Phase 7's FR-069, not this phase's — this phase only reads it.
+model RiskBandConfiguration {
+  id           Int     @id @default(autoincrement())
+  minScore     Int
+  maxScore     Int
+  bandLabel    String  @db.VarChar(20)
+  colorHint    String? @db.VarChar(20)
+  displayOrder Int     @default(0)
+  isActive     Boolean @default(true)
+
+  @@index([minScore, maxScore])
 }
 
 // New this phase — backs the per-year reference-number sequence
