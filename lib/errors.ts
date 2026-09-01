@@ -1,7 +1,6 @@
 /**
- * AppError hierarchy (technical-architecture.md §7). Only the member this
- * phase needs is defined here; later phases add ValidationError,
- * NotFoundError, ConflictError, TransitionError when they first need them.
+ * AppError hierarchy (technical-architecture.md §7). Members added as each
+ * is first needed; ValidationError and TransitionError still pending.
  */
 export class AppError extends Error {
   constructor(message: string) {
@@ -12,3 +11,6 @@ export class AppError extends Error {
 
 /** Thrown by requireRole (lib/auth/requireRole.ts) — NFR-4.7's security boundary. */
 export class AuthorizationError extends AppError {}
+
+/** Thrown when a referenced record (e.g. an investigation) doesn't exist or isn't visible to the caller. */
+export class NotFoundError extends AppError {}
