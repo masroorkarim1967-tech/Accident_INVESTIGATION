@@ -28,7 +28,11 @@ const { auth } = NextAuth(authConfig);
 
 export default auth((req) => {
   const isLoggedIn = !!req.auth?.user;
-  const isWorkspaceRoute = !req.nextUrl.pathname.startsWith("/login");
+  // "/" is the public landing page (components/landing/LandingPage.tsx),
+  // not a workspace route — must mirror authConfig's authorized callback.
+  const { pathname } = req.nextUrl;
+  const isPublicRoute = pathname === "/" || pathname.startsWith("/login");
+  const isWorkspaceRoute = !isPublicRoute;
 
   const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
   // React's dev-mode Fast Refresh uses eval() for stack-trace reconstruction

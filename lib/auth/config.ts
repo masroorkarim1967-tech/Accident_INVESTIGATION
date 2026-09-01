@@ -29,8 +29,12 @@ export const authConfig = {
   callbacks: {
     authorized({ auth, request }) {
       const isLoggedIn = !!auth?.user;
-      const isWorkspaceRoute = !request.nextUrl.pathname.startsWith("/login");
-      if (isWorkspaceRoute && !isLoggedIn) {
+      const { pathname } = request.nextUrl;
+      // "/" is the public landing page (components/landing/LandingPage.tsx),
+      // not a workspace route — it must stay reachable without a session,
+      // same as /login.
+      const isPublicRoute = pathname === "/" || pathname.startsWith("/login");
+      if (!isPublicRoute && !isLoggedIn) {
         return false;
       }
       return true;
