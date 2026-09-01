@@ -58,6 +58,9 @@ export default async function InvestigationDetailPage({
             : "not-started"
         }
         hazardsCompleteness={investigation._count.hazards > 0 ? "complete" : "not-started"}
+        contributingFactorsCompleteness={investigation._count.contributingFactors > 0 ? "complete" : "not-started"}
+        fiveWhysCompleteness={investigation._count.fiveWhysAnalyses > 0 ? "complete" : "not-started"}
+        rootCauseCompleteness={investigation._count.rootCauses > 0 ? "complete" : "not-started"}
       />
 
       <div className="flex-1 p-6">

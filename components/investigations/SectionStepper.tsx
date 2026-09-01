@@ -5,11 +5,11 @@ import { CompletenessIndicator, type CompletenessState } from "./CompletenessInd
  * Section Stepper (ui-spec.md §2.3) — the investigation workspace's left
  * rail, listing all 13 workspace pages (ui-spec.md §3's page-to-module
  * mapping). Overview, Occurrence Details, Aircraft & Flight, Evidence,
- * Witnesses, and Hazard Analysis are real routes as of Phases 4-7; the
- * remaining 7 pages arrive in Phases 8-13 and are shown as non-clickable
- * stepper entries (not broken links) until then, with a "Not Started"
- * CompletenessDot — honest about what's actually built rather than
- * linking to 404s.
+ * Witnesses, Hazard Analysis, Contributing Factors, 5 Whys, and Root
+ * Cause Analysis are real routes as of Phases 4-8; the remaining 4 pages
+ * arrive in Phases 9-13 and are shown as non-clickable stepper entries
+ * (not broken links) until then, with a "Not Started" CompletenessDot —
+ * honest about what's actually built rather than linking to 404s.
  */
 interface StepperSection {
   key: string;
@@ -25,6 +25,9 @@ export function SectionStepper({
   evidenceCompleteness = "not-started",
   witnessesCompleteness = "not-started",
   hazardsCompleteness = "not-started",
+  contributingFactorsCompleteness = "not-started",
+  fiveWhysCompleteness = "not-started",
+  rootCauseCompleteness = "not-started",
 }: {
   investigationId: number;
   occurrenceCompleteness?: CompletenessState;
@@ -32,6 +35,9 @@ export function SectionStepper({
   evidenceCompleteness?: CompletenessState;
   witnessesCompleteness?: CompletenessState;
   hazardsCompleteness?: CompletenessState;
+  contributingFactorsCompleteness?: CompletenessState;
+  fiveWhysCompleteness?: CompletenessState;
+  rootCauseCompleteness?: CompletenessState;
 }) {
   const sections: StepperSection[] = [
     { key: "overview", label: "Overview", href: `/investigations/${investigationId}`, completeness: "not-started" },
@@ -66,9 +72,24 @@ export function SectionStepper({
       href: `/investigations/${investigationId}/hazards`,
       completeness: hazardsCompleteness,
     },
-    { key: "contributing-factors", label: "Contributing Factors", completeness: "not-started" },
-    { key: "five-whys", label: "5 Whys", completeness: "not-started" },
-    { key: "root-cause", label: "Root Cause Analysis", completeness: "not-started" },
+    {
+      key: "contributing-factors",
+      label: "Contributing Factors",
+      href: `/investigations/${investigationId}/contributing-factors`,
+      completeness: contributingFactorsCompleteness,
+    },
+    {
+      key: "five-whys",
+      label: "5 Whys",
+      href: `/investigations/${investigationId}/five-whys`,
+      completeness: fiveWhysCompleteness,
+    },
+    {
+      key: "root-cause",
+      label: "Root Cause Analysis",
+      href: `/investigations/${investigationId}/root-causes`,
+      completeness: rootCauseCompleteness,
+    },
     { key: "actions", label: "Corrective/Preventive Actions", completeness: "not-started" },
     { key: "review", label: "Investigation Review", completeness: "not-started" },
     { key: "report", label: "Report Preview", completeness: "not-started" },

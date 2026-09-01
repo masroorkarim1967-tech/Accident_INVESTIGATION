@@ -134,6 +134,32 @@ enum HazardCategory {
   Other
 }
 
+// data-model.md §6.7 — shared by ContributingFactor.category and
+// RootCause.category (10-value framework, distinct from HazardCategory's
+// simpler 5-value set — data-model.md §6.7's own note on why).
+enum FactorCategory {
+  HumanFactors
+  Equipment
+  Environment
+  Procedures
+  Training
+  Supervision
+  Communication
+  Organization
+  Management
+  ExternalFactors
+}
+
+// data-model.md §6.8 — RootCause.confidenceLevel. Same Low/Medium/High
+// value set as AssessmentLevel but a conceptually distinct scale
+// (investigator confidence, not relevance/reliability), so kept as its
+// own enum — same precedent as AssessmentLevel's own doc-comment.
+enum ConfidenceLevel {
+  Low
+  Medium
+  High
+}
+
 enum DamageLevel {
   None
   Minor
@@ -214,14 +240,15 @@ model User {
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
 
-  createdInvestigations  Investigation[]        @relation("InvestigationCreatedBy")
-  assignedInvestigations Investigation[]        @relation("InvestigationAssignedTo")
-  historyEntries         InvestigationHistory[]
-  loginAttempts          LoginAttempt[]
-  accounts               Account[]
-  sessions               Session[]
-  classifiedOccurrences  Occurrence[]
-  uploadedAttachments    Attachment[]
+  createdInvestigations    Investigation[]        @relation("InvestigationCreatedBy")
+  assignedInvestigations   Investigation[]        @relation("InvestigationAssignedTo")
+  historyEntries           InvestigationHistory[]
+  loginAttempts            LoginAttempt[]
+  accounts                 Account[]
+  sessions                 Session[]
+  classifiedOccurrences    Occurrence[]
+  uploadedAttachments      Attachment[]
+  fiveWhysAnalysesAuthored FiveWhysAnalysis[]
 
   @@index([role])
 }
@@ -252,6 +279,9 @@ model Investigation {
   witnesses            Witness[]
   evidence             Evidence[]
   hazards              Hazard[]
+  contributingFactors  ContributingFactor[]
+  fiveWhysAnalyses     FiveWhysAnalysis[]
+  rootCauses           RootCause[]
 
   @@index([status])
   @@index([assignedInvestigatorUserId])
@@ -489,11 +519,106 @@ model Hazard {
   residualRiskScore  Int?
   residualRiskBand   String?         @db.VarChar(20)
 
-  investigation Investigation @relation(fields: [investigationId], references: [id], onDelete: Cascade)
+  investigation           Investigation                  @relation(fields: [investigationId], references: [id], onDelete: Cascade)
+  contributingFactorLinks ContributingFactorHazardLink[]
 
   @@index([investigationId])
   @@index([initialRiskBand])
   @@index([residualRiskBand])
+}
+
+// data-model.md §3.13 — FR-031/FR-032.
+model ContributingFactor {
+  id              Int            @id @default(autoincrement())
+  investigationId Int
+  description     String         @db.Text
+  category        FactorCategory
+
+  investigation  Investigation                     @relation(fields: [investigationId], references: [id], onDelete: Cascade)
+  hazardLinks    ContributingFactorHazardLink[]
+  rootCauseLinks RootCauseContributingFactorLink[]
+
+  @@index([investigationId])
+}
+
+// data-model.md §3.14 — supporting many-to-many join table.
+model ContributingFactorHazardLink {
+  contributingFactorId Int
+  hazardId             Int
+
+  contributingFactor ContributingFactor @relation(fields: [contributingFactorId], references: [id], onDelete: Cascade)
+  hazard             Hazard             @relation(fields: [hazardId], references: [id], onDelete: Cascade)
+
+  @@id([contributingFactorId, hazardId])
+}
+
+// data-model.md §3.15 — FR-034.
+model FiveWhysAnalysis {
+  id               Int      @id @default(autoincrement())
+  investigationId  Int
+  problemStatement String   @db.Text
+  createdByUserId  Int
+  createdAt        DateTime @default(now())
+
+  investigation Investigation   @relation(fields: [investigationId], references: [id], onDelete: Cascade)
+  createdBy     User            @relation(fields: [createdByUserId], references: [id])
+  entries       FiveWhysEntry[]
+  rootCause     RootCause?
+
+  @@index([investigationId])
+}
+
+// data-model.md §3.16 — FR-035/FR-036/FR-037. Capped at 5 entries
+// (sequenceNumber 1-5) by application logic; early stop below 5 is
+// expected and not itself an incomplete state.
+model FiveWhysEntry {
+  id                 Int    @id @default(autoincrement())
+  fiveWhysAnalysisId Int
+  sequenceNumber     Int
+  question           String @db.Text
+  answer             String @db.Text
+
+  fiveWhysAnalysis FiveWhysAnalysis @relation(fields: [fiveWhysAnalysisId], references: [id], onDelete: Cascade)
+
+  @@unique([fiveWhysAnalysisId, sequenceNumber])
+  @@index([fiveWhysAnalysisId])
+}
+
+// data-model.md §3.17 — FR-038/FR-039. description/category/
+// supportingEvidence/confidenceLevel are nullable at the DB level but
+// application-required together UNLESS isInconclusive=true, in which
+// case inconclusiveJustification is required instead
+// (investigation-workflow.md §9.5) — enforced in
+// lib/validation/rootCause.ts, not by a DB CHECK constraint (Prisma has
+// none for this cross-field shape).
+model RootCause {
+  id                        Int              @id @default(autoincrement())
+  investigationId           Int
+  description               String?          @db.Text
+  category                  FactorCategory?
+  fiveWhysAnalysisId        Int?             @unique
+  supportingEvidence        String?          @db.Text
+  investigatorNotes         String?          @db.Text
+  confidenceLevel           ConfidenceLevel?
+  isInconclusive            Boolean          @default(false)
+  inconclusiveJustification String?          @db.Text
+
+  investigation           Investigation                     @relation(fields: [investigationId], references: [id], onDelete: Cascade)
+  fiveWhysAnalysis        FiveWhysAnalysis?                 @relation(fields: [fiveWhysAnalysisId], references: [id], onDelete: SetNull)
+  contributingFactorLinks RootCauseContributingFactorLink[]
+
+  @@index([investigationId])
+}
+
+// data-model.md §3.18 — supporting many-to-many join table.
+model RootCauseContributingFactorLink {
+  rootCauseId          Int
+  contributingFactorId Int
+
+  rootCause          RootCause          @relation(fields: [rootCauseId], references: [id], onDelete: Cascade)
+  contributingFactor ContributingFactor @relation(fields: [contributingFactorId], references: [id], onDelete: Cascade)
+
+  @@id([rootCauseId, contributingFactorId])
 }
 
 // data-model.md §6.4 — configurable risk-band matrix. Seeded with the
