@@ -145,7 +145,7 @@ export async function getInvestigationDetail(id: number, currentUser: { id: numb
       aircraft: { select: { investigationId: true } },
       flight: { select: { investigationId: true } },
       location: { select: { investigationId: true } },
-      _count: { select: { witnesses: true, evidence: true } },
+      _count: { select: { witnesses: true, evidence: true, hazards: true } },
     },
   });
 }

@@ -41,7 +41,14 @@ export function HeaderNav({
       <RoleBadge role={user.role} />
       <div className="flex items-center gap-2">
         <span className="text-foreground">{user.name}</span>
-        <Link href="/settings" className="text-muted hover:text-teal">
+        {/* The full tabbed Settings hub (ui-spec.md §18) has no
+            implementation-plan.md phase of its own yet; Risk Band
+            Configuration (Phase 7, FR-069, Administrator-only) is the one
+            real settings page that exists so far. */}
+        <Link
+          href={user.role === "Administrator" ? "/settings/risk-bands" : "/settings"}
+          className="text-muted hover:text-teal"
+        >
           Settings
         </Link>
         <form action={logoutAction}>

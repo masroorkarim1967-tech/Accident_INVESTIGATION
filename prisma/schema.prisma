@@ -125,6 +125,15 @@ enum InvestigationPriority {
   Immediate
 }
 
+// data-model.md §3.12 — deliberately separate from OccurrenceCategory (§6.7's DM-13 note).
+enum HazardCategory {
+  HumanFactors
+  Technical
+  Environmental
+  Organizational
+  Other
+}
+
 enum DamageLevel {
   None
   Minor
@@ -242,6 +251,7 @@ model Investigation {
   immediateActions     ImmediateAction[]
   witnesses            Witness[]
   evidence             Evidence[]
+  hazards              Hazard[]
 
   @@index([status])
   @@index([assignedInvestigatorUserId])
@@ -457,9 +467,38 @@ model Attachment {
   @@index([evidenceId])
 }
 
+// data-model.md §3.12 — Initial Risk is required at creation; Residual
+// Risk (existingControls/residualLikelihood/residualSeverity/
+// residualRiskScore/residualRiskBand) is optional, added later via FR-068.
+// initialRiskScore/initialRiskBand and their residual counterparts are
+// computed by lib/services/riskEngine.ts and stored (not virtual) so
+// historical reports stay stable if RiskBandConfiguration is later
+// reconfigured — same rationale as Occurrence.riskScore/riskBand.
+model Hazard {
+  id                 Int             @id @default(autoincrement())
+  investigationId    Int
+  description        String          @db.Text
+  hazardCategory     HazardCategory
+  initialLikelihood  RiskLikelihood
+  initialSeverity    RiskSeverity
+  initialRiskScore   Int
+  initialRiskBand    String          @db.VarChar(20)
+  existingControls   String?         @db.Text
+  residualLikelihood RiskLikelihood?
+  residualSeverity   RiskSeverity?
+  residualRiskScore  Int?
+  residualRiskBand   String?         @db.VarChar(20)
+
+  investigation Investigation @relation(fields: [investigationId], references: [id], onDelete: Cascade)
+
+  @@index([investigationId])
+  @@index([initialRiskBand])
+  @@index([residualRiskBand])
+}
+
 // data-model.md §6.4 — configurable risk-band matrix. Seeded with the
-// default Low/Moderate/High/Critical bands; Administrator edit UI is
-// Phase 7's FR-069, not this phase's — this phase only reads it.
+// default Low/Moderate/High/Critical bands; Administrator edit UI (FR-069)
+// is Phase 7's `app/(workspace)/settings/risk-bands/page.tsx`.
 model RiskBandConfiguration {
   id           Int     @id @default(autoincrement())
   minScore     Int

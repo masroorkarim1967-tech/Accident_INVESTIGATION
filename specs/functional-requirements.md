@@ -1093,8 +1093,9 @@ FR-029 is updated in place; FR-068 is newly added for Existing Controls / Residu
 - **Purpose**: Correct data-entry mistakes.
 - **User**: ADMIN, MANAGER, INVESTIGATOR (assigned/owning).
 - **Inputs**: Selected hazard, confirmation.
-- **Outputs**: `Hazard` row removed; any `ContributingFactorHazardLink` or `Action.hazardId`
-  references are cleared (link removed, not a cascading delete of the linked factor/action).
+- **Outputs**: `Hazard` row removed; any `ContributingFactorHazardLink`, `CorrectiveAction.hazardId`,
+  or `PreventiveAction.hazardId` references are cleared (link removed, not a cascading delete of the
+  linked factor/action).
 - **Validation Rules**: Confirmation required; the confirmation dialog notes if the hazard is
   currently linked to one or more contributing factors or actions, so the user understands the link
   will be cleared.

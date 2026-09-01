@@ -513,11 +513,18 @@ are visible together.
   implementation that was ever built (no `LocalDiskStorageProvider` exists anywhere in the
   codebase), and `functional-requirements.md` FR-023/FR-055's `DATA_DIR`/local-disk language was
   corrected to reference the actual implementation.
+- **SR-005** (`Action.hazardId` reference in FR-030 predates the CorrectiveAction/PreventiveAction
+  split) — closed in Phase 7 exactly as this review's own recommended resolution proposed: FR-030's
+  Outputs line now reads "`ContributingFactorHazardLink`, `CorrectiveAction.hazardId`, or
+  `PreventiveAction.hazardId` references are cleared." The two tables it now names don't exist in
+  the schema yet (`CorrectiveAction`/`PreventiveAction` are Phase 9's), but that's independent of
+  this item — SR-005 flagged stale *wording*, not a missing implementation, and the wording is
+  correct now regardless of which phase builds the tables it names.
 
 **Still genuinely open** (accurately so, not stale): every other item, most directly because the
 phases they depend on — Investigation Findings (SR-008, which also blocks FR-071's Evidence-to-
 Finding linking UI — deferred in Phase 6 exactly as `implementation-plan.md`'s acceptance criteria
 allowed, tracked rather than silently skipped), the Assistance Engine (SR-009), Root Cause Analysis
-and Corrective/Preventive Actions (SR-005, SR-021, SR-022), and Report Generation (SR-006, SR-007)
-— have not been implemented yet. These should be re-checked against this same section as each phase
-lands, not assumed resolved by the passage of time alone.
+and Corrective/Preventive Actions (SR-021, SR-022), and Report Generation (SR-006, SR-007) — have
+not been implemented yet. These should be re-checked against this same section as each phase lands,
+not assumed resolved by the passage of time alone.

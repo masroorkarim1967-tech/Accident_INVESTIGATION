@@ -57,6 +57,7 @@ export default async function InvestigationDetailPage({
             ? "complete"
             : "not-started"
         }
+        hazardsCompleteness={investigation._count.hazards > 0 ? "complete" : "not-started"}
       />
 
       <div className="flex-1 p-6">
