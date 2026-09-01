@@ -506,10 +506,18 @@ are visible together.
   own recommended resolution proposed: it authenticates as the seeded Guest Viewer account through
   a real Auth.js session (`app/(auth)/login/actions.ts`'s `continueAsViewerAction`, which cites this
   item by ID in its own comment) rather than bypassing authentication.
+- **SR-001 / SR-002** (storage provider contradiction; `Attachment` missing `fileBytes`) — both
+  Critical items closed in Phase 6 exactly as `technical-architecture.md` §9/TA-1 mandated:
+  `Attachment.fileBytes` (a Postgres `Bytes` column) was added to `data-model.md` §3.10 and the
+  Prisma schema from the start, `PostgresBlobStorageProvider` is the only v1 `StorageProvider`
+  implementation that was ever built (no `LocalDiskStorageProvider` exists anywhere in the
+  codebase), and `functional-requirements.md` FR-023/FR-055's `DATA_DIR`/local-disk language was
+  corrected to reference the actual implementation.
 
 **Still genuinely open** (accurately so, not stale): every other item, most directly because the
-phases they depend on — Evidence/Witnesses (SR-001, SR-002), Investigation Findings (SR-008), the
-Assistance Engine (SR-009), Root Cause Analysis and Corrective/Preventive Actions (SR-005, SR-021,
-SR-022), and Report Generation (SR-006, SR-007) — have not been implemented yet. These should be
-re-checked against this same section as each phase lands, not assumed resolved by the passage of
-time alone.
+phases they depend on — Investigation Findings (SR-008, which also blocks FR-071's Evidence-to-
+Finding linking UI — deferred in Phase 6 exactly as `implementation-plan.md`'s acceptance criteria
+allowed, tracked rather than silently skipped), the Assistance Engine (SR-009), Root Cause Analysis
+and Corrective/Preventive Actions (SR-005, SR-021, SR-022), and Report Generation (SR-006, SR-007)
+— have not been implemented yet. These should be re-checked against this same section as each phase
+lands, not assumed resolved by the passage of time alone.

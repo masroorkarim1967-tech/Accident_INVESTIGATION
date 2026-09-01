@@ -4,11 +4,11 @@ import { CompletenessIndicator, type CompletenessState } from "./CompletenessInd
 /**
  * Section Stepper (ui-spec.md §2.3) — the investigation workspace's left
  * rail, listing all 13 workspace pages (ui-spec.md §3's page-to-module
- * mapping). Overview, Occurrence Details, and Aircraft & Flight are real
- * routes as of Phases 4-5; the remaining 10 pages arrive in Phases 6-13
- * and are shown as non-clickable stepper entries (not broken links) until
- * then, with a "Not Started" CompletenessDot — honest about what's
- * actually built rather than linking to 404s.
+ * mapping). Overview, Occurrence Details, Aircraft & Flight, Evidence, and
+ * Witnesses are real routes as of Phases 4-6; the remaining 8 pages arrive
+ * in Phases 7-13 and are shown as non-clickable stepper entries (not
+ * broken links) until then, with a "Not Started" CompletenessDot — honest
+ * about what's actually built rather than linking to 404s.
  */
 interface StepperSection {
   key: string;
@@ -21,10 +21,14 @@ export function SectionStepper({
   investigationId,
   occurrenceCompleteness = "not-started",
   aircraftFlightCompleteness = "not-started",
+  evidenceCompleteness = "not-started",
+  witnessesCompleteness = "not-started",
 }: {
   investigationId: number;
   occurrenceCompleteness?: CompletenessState;
   aircraftFlightCompleteness?: CompletenessState;
+  evidenceCompleteness?: CompletenessState;
+  witnessesCompleteness?: CompletenessState;
 }) {
   const sections: StepperSection[] = [
     { key: "overview", label: "Overview", href: `/investigations/${investigationId}`, completeness: "not-started" },
@@ -40,8 +44,18 @@ export function SectionStepper({
       href: `/investigations/${investigationId}/aircraft-flight`,
       completeness: aircraftFlightCompleteness,
     },
-    { key: "evidence", label: "Evidence", completeness: "not-started" },
-    { key: "witnesses", label: "Witnesses", completeness: "not-started" },
+    {
+      key: "evidence",
+      label: "Evidence",
+      href: `/investigations/${investigationId}/evidence`,
+      completeness: evidenceCompleteness,
+    },
+    {
+      key: "witnesses",
+      label: "Witnesses",
+      href: `/investigations/${investigationId}/witnesses`,
+      completeness: witnessesCompleteness,
+    },
     { key: "findings", label: "Investigation Findings", completeness: "not-started" },
     { key: "hazards", label: "Hazard Analysis", completeness: "not-started" },
     { key: "contributing-factors", label: "Contributing Factors", completeness: "not-started" },

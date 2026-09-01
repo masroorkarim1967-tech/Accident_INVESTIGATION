@@ -47,6 +47,16 @@ export default async function InvestigationDetailPage({
         aircraftFlightCompleteness={
           investigation.aircraft || investigation.flight || investigation.location ? "in-progress" : "not-started"
         }
+        evidenceCompleteness={
+          investigation._count.evidence > 0 || investigation.occurrence?.noEvidenceAvailableConfirmed
+            ? "complete"
+            : "not-started"
+        }
+        witnessesCompleteness={
+          investigation._count.witnesses > 0 || investigation.occurrence?.noWitnessesConfirmed
+            ? "complete"
+            : "not-started"
+        }
       />
 
       <div className="flex-1 p-6">

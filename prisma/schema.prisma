@@ -161,6 +161,38 @@ enum ImmediateActionType {
   Notification
 }
 
+// data-model.md §5 — WitnessType
+enum WitnessType {
+  Crew
+  Passenger
+  ATC
+  GroundObserver
+  Other
+}
+
+// data-model.md §5 — EvidenceType (10-category taxonomy)
+enum EvidenceType {
+  Photographs
+  Documents
+  Statements
+  CCTVReference
+  FlightRecords
+  MaintenanceRecords
+  GroundHandlingRecords
+  TrainingRecords
+  Emails
+  Other
+}
+
+// data-model.md §5 — shared High/Medium/Low value set, used for both
+// Witness/Evidence "reliability" (trustworthiness) and Evidence
+// "relevance" (how pertinent) — conceptually distinct fields, same scale.
+enum AssessmentLevel {
+  High
+  Medium
+  Low
+}
+
 // --- Core entities ------------------------------------------------------
 
 // data-model.md §3.1
@@ -180,6 +212,7 @@ model User {
   accounts               Account[]
   sessions               Session[]
   classifiedOccurrences  Occurrence[]
+  uploadedAttachments    Attachment[]
 
   @@index([role])
 }
@@ -207,6 +240,8 @@ model Investigation {
   location             Location?
   persons              Person[]
   immediateActions     ImmediateAction[]
+  witnesses            Witness[]
+  evidence             Evidence[]
 
   @@index([status])
   @@index([assignedInvestigatorUserId])
@@ -355,6 +390,71 @@ model ImmediateAction {
   investigation Investigation @relation(fields: [investigationId], references: [id], onDelete: Cascade)
 
   @@index([investigationId])
+}
+
+// data-model.md §3.8
+model Witness {
+  id                    Int             @id @default(autoincrement())
+  investigationId       Int
+  name                  String          @db.VarChar(150)
+  contactInfo           String?         @db.VarChar(200)
+  witnessType           WitnessType
+  statementSummary      String          @db.Text
+  statementDate         DateTime?       @db.Date
+  reliabilityAssessment AssessmentLevel
+  reliabilityNotes      String?         @db.Text
+
+  investigation Investigation @relation(fields: [investigationId], references: [id], onDelete: Cascade)
+
+  @@index([investigationId])
+}
+
+// data-model.md §3.9
+model Evidence {
+  id                    Int             @id @default(autoincrement())
+  investigationId       Int
+  evidenceType          EvidenceType
+  description           String          @db.Text
+  source                String          @db.VarChar(200)
+  collectedBy           String?         @db.VarChar(150)
+  dateObtained          DateTime?       @db.Date
+  relevance             AssessmentLevel
+  reliabilityAssessment AssessmentLevel
+  reliabilityNotes      String?         @db.Text
+  investigatorNotes     String?         @db.Text
+  custodyNotes          String?         @db.Text
+
+  investigation Investigation @relation(fields: [investigationId], references: [id], onDelete: Cascade)
+  attachments   Attachment[]
+
+  @@index([investigationId])
+  @@index([evidenceType])
+  @@index([relevance])
+}
+
+// data-model.md §3.10, corrected per technical-architecture.md §9 / TA-1
+// and spec-review.md SR-001/SR-002: attachment bytes live in `fileBytes`
+// (Postgres `bytea`), not on disk — Vercel's serverless filesystem cannot
+// durably persist an upload across invocations. `storagePath` is kept as
+// the StorageProvider interface's opaque handle (a generated key, not a
+// filesystem path) so a future object-storage-backed provider is a
+// swap-in change, not a rewrite.
+model Attachment {
+  id               Int      @id @default(autoincrement())
+  evidenceId       Int
+  fileName         String   @db.VarChar(255)
+  mimeType         String   @db.VarChar(100)
+  fileSizeBytes    Int
+  storagePath      String   @unique @db.VarChar(500)
+  fileBytes        Bytes
+  isSimulated      Boolean  @default(false)
+  uploadedByUserId Int
+  uploadedAt       DateTime @default(now())
+
+  evidence   Evidence @relation(fields: [evidenceId], references: [id], onDelete: Cascade)
+  uploadedBy User     @relation(fields: [uploadedByUserId], references: [id])
+
+  @@index([evidenceId])
 }
 
 // data-model.md §6.4 — configurable risk-band matrix. Seeded with the

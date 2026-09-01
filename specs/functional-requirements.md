@@ -781,8 +781,10 @@ linking evidence to findings.
 - **User**: ADMIN, MANAGER, INVESTIGATOR (assigned/owning).
 - **Inputs**: File (from an existing `Evidence` item's context), MIME type inferred from the file.
 - **Outputs**: New `Attachment` row with `isSimulated = FALSE`; file saved via the active
-  `StorageProvider` (v1: `LocalDiskStorageProvider`, writing under `DATA_DIR/attachments`,
-  assumption A6); `uploadedByUserId`/`uploadedAt` recorded.
+  `StorageProvider` (v1: `PostgresBlobStorageProvider`, storing bytes in `Attachment.fileBytes`,
+  a Postgres `Bytes` column — `technical-architecture.md` §9, TA-1; **not** local disk, which does
+  not survive across Vercel's ephemeral serverless invocations); `uploadedByUserId`/`uploadedAt`
+  recorded. Closes spec-review.md SR-001.
 - **Validation Rules**: Accepted types restricted to images (JPEG/PNG), PDF, and plain text
   (NFR-4.5) — deliberately excluding video/audio, macro-capable office formats, and executables
   (`data-model.md` §6.11). This is why `CCTVReference` evidence cannot carry an uploaded video and
@@ -1661,8 +1663,9 @@ inconsistency is fixed here.
 - **Error Behavior**: Attempting to delete a non-Draft investigation is rejected with an explanation
   and no partial deletion occurs.
 - **Empty State**: N/A.
-- **Edge Cases**: Deleting a draft investigation with uploaded evidence attachments also removes those
-  files from disk (same pattern as FR-022).
+- **Edge Cases**: Deleting a draft investigation with uploaded evidence attachments also removes
+  their `fileBytes` from the database via cascade (same pattern as FR-022) — not "from disk"; closes
+  spec-review.md SR-001's other flagged instance of this language.
 
 ---
 

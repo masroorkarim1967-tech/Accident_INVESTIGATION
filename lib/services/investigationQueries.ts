@@ -134,10 +134,18 @@ export async function getInvestigationDetail(id: number, currentUser: { id: numb
     include: {
       createdBy: { select: { name: true } },
       assignedInvestigator: { select: { id: true, name: true } },
-      occurrence: { select: { occurrenceDateUtc: true, narrativeDescription: true } },
+      occurrence: {
+        select: {
+          occurrenceDateUtc: true,
+          narrativeDescription: true,
+          noWitnessesConfirmed: true,
+          noEvidenceAvailableConfirmed: true,
+        },
+      },
       aircraft: { select: { investigationId: true } },
       flight: { select: { investigationId: true } },
       location: { select: { investigationId: true } },
+      _count: { select: { witnesses: true, evidence: true } },
     },
   });
 }
