@@ -4,11 +4,11 @@ import { CompletenessIndicator, type CompletenessState } from "./CompletenessInd
 /**
  * Section Stepper (ui-spec.md §2.3) — the investigation workspace's left
  * rail, listing all 13 workspace pages (ui-spec.md §3's page-to-module
- * mapping). Only "Overview" is a real route this phase; the other 12
- * pages arrive in Phases 5-13 and are shown as non-clickable stepper
- * entries (not broken links) until then, with a "Not Started"
- * CompletenessDot — matching FR-010's stated empty state, and honest
- * about what this phase actually built rather than linking to 404s.
+ * mapping). Overview, Occurrence Details, and Aircraft & Flight are real
+ * routes as of Phases 4-5; the remaining 10 pages arrive in Phases 6-13
+ * and are shown as non-clickable stepper entries (not broken links) until
+ * then, with a "Not Started" CompletenessDot — honest about what's
+ * actually built rather than linking to 404s.
  */
 interface StepperSection {
   key: string;
@@ -19,19 +19,27 @@ interface StepperSection {
 
 export function SectionStepper({
   investigationId,
-  occurrenceStarted,
+  occurrenceCompleteness = "not-started",
+  aircraftFlightCompleteness = "not-started",
 }: {
   investigationId: number;
-  occurrenceStarted: boolean;
+  occurrenceCompleteness?: CompletenessState;
+  aircraftFlightCompleteness?: CompletenessState;
 }) {
   const sections: StepperSection[] = [
     { key: "overview", label: "Overview", href: `/investigations/${investigationId}`, completeness: "not-started" },
     {
       key: "occurrence",
       label: "Occurrence Details",
-      completeness: occurrenceStarted ? "in-progress" : "not-started",
+      href: `/investigations/${investigationId}/occurrence`,
+      completeness: occurrenceCompleteness,
     },
-    { key: "aircraft-flight", label: "Aircraft & Flight", completeness: "not-started" },
+    {
+      key: "aircraft-flight",
+      label: "Aircraft & Flight",
+      href: `/investigations/${investigationId}/aircraft-flight`,
+      completeness: aircraftFlightCompleteness,
+    },
     { key: "evidence", label: "Evidence", completeness: "not-started" },
     { key: "witnesses", label: "Witnesses", completeness: "not-started" },
     { key: "findings", label: "Investigation Findings", completeness: "not-started" },

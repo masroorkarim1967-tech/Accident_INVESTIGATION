@@ -41,7 +41,13 @@ export default async function InvestigationDetailPage({
 
   return (
     <div className="flex">
-      <SectionStepper investigationId={investigation.id} occurrenceStarted={Boolean(investigation.occurrence)} />
+      <SectionStepper
+        investigationId={investigation.id}
+        occurrenceCompleteness={investigation.occurrence?.narrativeDescription ? "in-progress" : "not-started"}
+        aircraftFlightCompleteness={
+          investigation.aircraft || investigation.flight || investigation.location ? "in-progress" : "not-started"
+        }
+      />
 
       <div className="flex-1 p-6">
         <p className="font-mono text-xs text-muted">
