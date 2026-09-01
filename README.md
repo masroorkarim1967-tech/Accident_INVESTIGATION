@@ -299,12 +299,15 @@ categories, both positive and negative coverage for every feature area).
 
 **Not yet deployed.** The target architecture is Vercel (Hobby tier) with Neon Postgres, chosen
 specifically because neither requires a credit card or paid tier for this project's scale, and both
-integrate natively (one-click provisioning, per-preview-deployment database branching). Planned
-deployment steps: connect the GitHub repository to Vercel, configure the environment variables above
-per-environment, run `prisma migrate deploy` as an explicit release step before promoting each
-deployment, and seed the production database with the same fictional demo dataset. Full detail in
-[`specs/technical-architecture.md`](specs/technical-architecture.md) §10 and
-[`specs/implementation-plan.md`](specs/implementation-plan.md) Phase 16.
+integrate natively (one-click provisioning, per-preview-deployment database branching).
+
+The full step-by-step procedure — GitHub repository, Vercel account, importing the repository,
+environment variables, provisioning Neon, `prisma migrate deploy`, seeding, build, deploy,
+domain/URL, and a post-deployment smoke-test checklist — is written out in
+[`specs/deployment-spec.md`](specs/deployment-spec.md). The architectural reasoning behind these
+choices is in [`specs/technical-architecture.md`](specs/technical-architecture.md) §5, §9–§11, and
+the original phase-plan entry is [`specs/implementation-plan.md`](specs/implementation-plan.md)
+Phase 16.
 
 ## Disclaimer
 
