@@ -1,12 +1,18 @@
 import { OccurrenceCategory } from "@/prisma/generated/prisma/client";
+import type { ConfidenceTier } from "./confidence";
 
 /**
  * FR-028 — Generate Suggested Classification (Investigation Support).
  * Local, transparent, rule-based keyword matching — no external AI service,
- * no trained model (assistance-engine.md §2, product-spec.md §11.1). This
- * inline implementation is later absorbed into Phase 11's shared engine
- * module without changing this externally-observed behavior
- * (implementation-plan.md Phase 5).
+ * no trained model (assistance-engine.md §2, product-spec.md §11.1).
+ * Category B, Inferential (assistance-engine.md §3.3/§3.4). Moved here
+ * from lib/services/suggestClassification.ts as part of Phase 11's
+ * consolidation (implementation-plan.md Phase 11) — category/subcategory
+ * matching logic is identical to the Phase 5 original; this pass adds the
+ * `confidence` tier the original never computed, closing a real gap
+ * against §3.4's "every Inferential output carries a confidence tier,
+ * shown alongside the output, never hidden" requirement (also required by
+ * testing-spec.md TS-032).
  *
  * Category/subcategory only — severity, risk, and priority are always
  * computed from structured fields (FR-067), never narrative-suggested.
@@ -53,6 +59,14 @@ export interface ClassificationSuggestion {
   category: OccurrenceCategory;
   subcategory: string;
   matchedKeywords: string[];
+  confidence: ConfidenceTier;
+}
+
+/** Two or more matched keywords is a strong signal; one is weaker, scaled by how specific that single phrase is. */
+function confidenceFor(matched: string[]): ConfidenceTier {
+  if (matched.length >= 2) return "High";
+  const wordCount = matched[0].split(" ").length;
+  return wordCount >= 3 ? "Medium" : "Low";
 }
 
 /**
@@ -80,5 +94,6 @@ export function suggestClassification(narrativeDescription: string): Classificat
     category: bestMatch.rule.category,
     subcategory: bestMatch.rule.subcategory,
     matchedKeywords: bestMatch.matched,
+    confidence: confidenceFor(bestMatch.matched),
   };
 }

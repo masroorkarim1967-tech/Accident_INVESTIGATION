@@ -14,7 +14,8 @@ import {
   generateClassificationSuggestionAction,
   type OccurrenceActionState,
 } from "@/lib/actions/occurrence";
-import type { ClassificationSuggestion } from "@/lib/services/suggestClassification";
+import type { ClassificationSuggestion } from "@/lib/services/investigationSupportEngine/suggestClassification";
+import { SUPPORT_LABELS } from "@/lib/services/investigationSupportEngine/labels";
 
 const CATEGORIES = [
   "AircraftIncident", "GroundHandlingIncident", "RampSafetyIncident", "BaggageIncident", "CargoIncident",
@@ -129,7 +130,7 @@ export function ClassificationPanel({
             {suggestion && (
               <div className="mt-2">
                 <SuggestionChip
-                  label="Investigation Support · Suggested Classification"
+                  label={SUPPORT_LABELS.suggestedClassification}
                   onAccept={handleAcceptSuggestion}
                   onDismiss={() => setSuggestion(null)}
                 >
@@ -137,7 +138,7 @@ export function ClassificationPanel({
                     {CATEGORY_LABELS[suggestion.category]} — {suggestion.subcategory}
                   </p>
                   <p className="mt-1 text-xs text-muted">
-                    Matched: {suggestion.matchedKeywords.join(", ")}
+                    Confidence: {suggestion.confidence} · Matched: {suggestion.matchedKeywords.join(", ")}
                   </p>
                 </SuggestionChip>
               </div>

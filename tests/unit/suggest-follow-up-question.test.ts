@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { suggestFollowUpQuestion } from "@/lib/services/suggestFollowUpQuestion";
+import { suggestFollowUpQuestion } from "@/lib/services/investigationSupportEngine/suggestFollowUpQuestion";
 
 describe("suggestFollowUpQuestion (FR-036)", () => {
   it("templates a passive-voice answer into a matching question (FR-036's own worked example)", () => {

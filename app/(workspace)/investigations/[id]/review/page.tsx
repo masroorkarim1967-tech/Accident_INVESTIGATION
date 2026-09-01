@@ -10,6 +10,8 @@ import { SubmissionChecklist } from "@/components/review/SubmissionChecklist";
 import { ReviewDecisionForm } from "@/components/review/ReviewDecisionForm";
 import { ReopenForm } from "@/components/review/ReopenForm";
 import { AuditHistoryTimeline, type HistoryEntry } from "@/components/review/AuditHistoryTimeline";
+import { AdvisoryBanner } from "@/components/support/AdvisoryBanner";
+import { getReportQualityChecks } from "@/lib/services/investigationSupportEngine";
 import { UserRole } from "@/prisma/generated/prisma/client";
 
 /** FR-049-052/FR-053a/FR-054 — Investigation Review, Closure, and decision history. */
@@ -39,6 +41,8 @@ export default async function ReviewPage({ params }: { params: Promise<{ id: str
     occurredAt: row.occurredAt.toISOString(),
     relatedReview: row.relatedReview,
   }));
+
+  const reportQuality = await getReportQualityChecks(investigationId);
 
   let sectionContent: React.ReactNode;
 
@@ -77,7 +81,15 @@ export default async function ReviewPage({ params }: { params: Promise<{ id: str
           <StageBadge status={investigation.status} />
         </div>
 
-        <div className="mt-6 max-w-2xl">{sectionContent}</div>
+        <div className="mt-6 max-w-2xl">
+          <AdvisoryBanner
+            label={reportQuality.label}
+            items={reportQuality.issues}
+            emptyMessage={reportQuality.allClearMessage ?? undefined}
+          />
+        </div>
+
+        <div className="mt-4 max-w-2xl">{sectionContent}</div>
 
         <div className="mt-8 max-w-2xl">
           <h2 className="text-sm font-semibold text-foreground">Decision History</h2>

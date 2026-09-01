@@ -1,6 +1,11 @@
 import { db } from "@/lib/db";
 import { InvestigationStatus, HistoryEventType } from "@/prisma/generated/prisma/client";
 
+export interface GateCheckResult {
+  met: boolean;
+  unmetItems: string[];
+}
+
 /**
  * investigation-workflow.md §6/§8 — the three automatic ("System") stage
  * transitions: Draft -> Open, Open -> UnderInvestigation, UnderInvestigation
@@ -19,61 +24,37 @@ import { InvestigationStatus, HistoryEventType } from "@/prisma/generated/prisma
  * A no-op (single cheap read, no write) when the investigation's current
  * status isn't one of the three gate-checked statuses, or when the gate
  * isn't yet satisfied — safe to call defensively after any relevant save.
+ *
+ * Delegates its pass/fail decision to the check*Gate functions below —
+ * these are the single source of truth for gate criteria, also consumed by
+ * lib/services/investigationSupportEngine/checklistSuggestions.ts so the
+ * engine's advisory suggestions can never drift out of sync with what
+ * actually unblocks a transition (assistance-engine.md §2's "the workflow
+ * gate is correct by definition" rule).
  */
 export async function checkAndAdvanceStage(investigationId: number, performedByUserId: number): Promise<void> {
   const investigation = await db.investigation.findUnique({
     where: { id: investigationId },
-    include: {
-      occurrence: true,
-      aircraft: { select: { investigationId: true } },
-      flight: { select: { investigationId: true } },
-      location: { select: { investigationId: true } },
-      _count: { select: { persons: true, evidence: true, witnesses: true } },
-    },
+    select: { status: true },
   });
   if (!investigation) return;
 
   switch (investigation.status) {
     case InvestigationStatus.Draft: {
-      const occ = investigation.occurrence;
-      const gateMet = Boolean(
-        investigation.title &&
-          investigation.reporterName &&
-          occ?.occurrenceDateUtc &&
-          occ?.occurrenceTimeUtc &&
-          occ?.phaseOfFlight &&
-          occ?.briefDescription &&
-          occ?.narrativeDescription &&
-          investigation.assignedInvestigatorUserId,
-      );
-      if (gateMet) await advance(investigationId, InvestigationStatus.Draft, InvestigationStatus.Open, performedByUserId);
+      const gate = await checkDraftToOpenGate(investigationId);
+      if (gate.met) await advance(investigationId, InvestigationStatus.Draft, InvestigationStatus.Open, performedByUserId);
       return;
     }
     case InvestigationStatus.Open: {
-      const occ = investigation.occurrence;
-      const gateMet = Boolean(
-        occ?.occurrenceCategory &&
-          occ?.occurrenceSubcategoryId &&
-          occ?.actualOutcomeSeverity &&
-          occ?.potentialOutcomeSeverity &&
-          occ?.likelihoodOfRecurrence,
-      );
-      if (gateMet) {
+      const gate = await checkOpenToUnderInvestigationGate(investigationId);
+      if (gate.met) {
         await advance(investigationId, InvestigationStatus.Open, InvestigationStatus.UnderInvestigation, performedByUserId);
       }
       return;
     }
     case InvestigationStatus.UnderInvestigation: {
-      const occ = investigation.occurrence;
-      const gateMet = Boolean(
-        investigation.aircraft &&
-          investigation.flight &&
-          investigation.location &&
-          (investigation._count.persons > 0 || occ?.noPersonsInvolvedConfirmed) &&
-          (investigation._count.evidence > 0 || occ?.noEvidenceAvailableConfirmed) &&
-          (investigation._count.witnesses > 0 || occ?.noWitnessesConfirmed),
-      );
-      if (gateMet) {
+      const gate = await checkUnderInvestigationToAnalysisGate(investigationId);
+      if (gate.met) {
         await advance(investigationId, InvestigationStatus.UnderInvestigation, InvestigationStatus.Analysis, performedByUserId);
       }
       return;
@@ -105,9 +86,86 @@ async function advance(
   ]);
 }
 
-export interface GateCheckResult {
-  met: boolean;
-  unmetItems: string[];
+/** investigation-workflow.md §8's "Draft -> Open" row. */
+export async function checkDraftToOpenGate(investigationId: number): Promise<GateCheckResult> {
+  const investigation = await db.investigation.findUnique({
+    where: { id: investigationId },
+    include: { occurrence: true },
+  });
+  if (!investigation) return { met: false, unmetItems: ["Investigation not found."] };
+
+  const occ = investigation.occurrence;
+  const unmetItems: string[] = [];
+
+  if (!occ?.occurrenceDateUtc || !occ?.occurrenceTimeUtc) {
+    unmetItems.push("Occurrence Date and Time are not yet recorded.");
+  }
+  if (!occ?.phaseOfFlight) unmetItems.push("Phase of Flight is not yet recorded.");
+  if (!occ?.briefDescription) unmetItems.push("Brief Description is not yet recorded.");
+  if (!occ?.narrativeDescription) unmetItems.push("Narrative Description is not yet recorded.");
+  if (!investigation.assignedInvestigatorUserId) unmetItems.push("No Investigator is assigned yet.");
+
+  // title/reporterName are NOT NULL at creation (FR-005) — included in the
+  // overall "met" decision defensively, but never surfaced as a suggestion
+  // since they cannot practically be missing on a persisted investigation.
+  const met = Boolean(
+    investigation.title && investigation.reporterName && unmetItems.length === 0,
+  );
+  return { met, unmetItems };
+}
+
+/** investigation-workflow.md §8's "Open -> Under Investigation" row. */
+export async function checkOpenToUnderInvestigationGate(investigationId: number): Promise<GateCheckResult> {
+  const investigation = await db.investigation.findUnique({
+    where: { id: investigationId },
+    include: { occurrence: true },
+  });
+  if (!investigation) return { met: false, unmetItems: ["Investigation not found."] };
+
+  const occ = investigation.occurrence;
+  const unmetItems: string[] = [];
+
+  if (!occ?.occurrenceCategory || !occ?.occurrenceSubcategoryId) {
+    unmetItems.push("Occurrence Classification (Category and Subcategory) is not yet set.");
+  }
+  if (!occ?.actualOutcomeSeverity) unmetItems.push("Actual Outcome is not yet recorded.");
+  if (!occ?.potentialOutcomeSeverity) unmetItems.push("Potential Outcome is not yet recorded.");
+  if (!occ?.likelihoodOfRecurrence) unmetItems.push("Likelihood of Recurrence is not yet recorded.");
+
+  return { met: unmetItems.length === 0, unmetItems };
+}
+
+/** investigation-workflow.md §8's "Under Investigation -> Analysis" row. */
+export async function checkUnderInvestigationToAnalysisGate(investigationId: number): Promise<GateCheckResult> {
+  const investigation = await db.investigation.findUnique({
+    where: { id: investigationId },
+    include: {
+      occurrence: true,
+      aircraft: { select: { investigationId: true } },
+      flight: { select: { investigationId: true } },
+      location: { select: { investigationId: true } },
+      _count: { select: { persons: true, evidence: true, witnesses: true } },
+    },
+  });
+  if (!investigation) return { met: false, unmetItems: ["Investigation not found."] };
+
+  const occ = investigation.occurrence;
+  const unmetItems: string[] = [];
+
+  if (!investigation.aircraft) unmetItems.push("Aircraft Information is not yet recorded.");
+  if (!investigation.flight) unmetItems.push("Flight Information is not yet recorded.");
+  if (!investigation.location) unmetItems.push("Location Information is not yet recorded.");
+  if (!(investigation._count.persons > 0 || occ?.noPersonsInvolvedConfirmed)) {
+    unmetItems.push("Persons Involved is not yet acknowledged (add a person, or confirm none were involved).");
+  }
+  if (!(investigation._count.evidence > 0 || occ?.noEvidenceAvailableConfirmed)) {
+    unmetItems.push("Evidence is not yet acknowledged (add an item, or confirm none is currently available).");
+  }
+  if (!(investigation._count.witnesses > 0 || occ?.noWitnessesConfirmed)) {
+    unmetItems.push("Witnesses is not yet acknowledged (add a witness, or confirm none were identified).");
+  }
+
+  return { met: unmetItems.length === 0, unmetItems };
 }
 
 /**

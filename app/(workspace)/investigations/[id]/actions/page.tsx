@@ -7,6 +7,8 @@ import { SectionStepper } from "@/components/investigations/SectionStepper";
 import { ActionsPanel } from "@/components/actions/ActionsPanel";
 import { ActionSummaryCard } from "@/components/actions/ActionSummaryCard";
 import type { ActionCardRow } from "@/components/actions/ActionCard";
+import { AdvisoryBanner } from "@/components/support/AdvisoryBanner";
+import { getActionReminders } from "@/lib/services/investigationSupportEngine";
 
 /** FR-040-048 — Corrective/Preventive Actions and Action Tracking. */
 export default async function ActionsPage({ params }: { params: Promise<{ id: string }> }) {
@@ -72,6 +74,7 @@ export default async function ActionsPage({ params }: { params: Promise<{ id: st
     .map((rc) => ({ id: rc.id, description: rc.description ?? "" }));
 
   const isReadOnly = investigation.status === "Review" || investigation.status === "Closed";
+  const actionReminders = await getActionReminders(investigationId);
 
   return (
     <div className="flex">
@@ -88,6 +91,12 @@ export default async function ActionsPage({ params }: { params: Promise<{ id: st
         <div className="mt-4">
           <ActionSummaryCard actions={[...correctiveActions, ...preventiveActions]} />
         </div>
+
+        {actionReminders.reminders.length > 0 && (
+          <div className="mt-4 max-w-2xl">
+            <AdvisoryBanner label={actionReminders.label} items={actionReminders.reminders} />
+          </div>
+        )}
 
         <div className="mt-6">
           <ActionsPanel

@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { requireInvestigationEditAccess } from "@/lib/auth/requireInvestigationEditAccess";
 import { AuthorizationError, NotFoundError } from "@/lib/errors";
 import { contributingFactorSchema } from "@/lib/validation/contributingFactor";
-import { suggestContributingFactors, type ContributingFactorSuggestion } from "@/lib/services/suggestContributingFactor";
+import { suggestContributingFactors, type ContributingFactorSuggestion } from "@/lib/services/investigationSupportEngine/suggestContributingFactor";
 import { UserRole, InvestigationStatus } from "@/prisma/generated/prisma/client";
 
 const EDIT_ROLES = [UserRole.Administrator, UserRole.InvestigationManager, UserRole.Investigator];

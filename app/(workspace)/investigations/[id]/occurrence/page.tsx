@@ -4,6 +4,8 @@ import { db } from "@/lib/db";
 import { getInvestigationDetail } from "@/lib/services/investigationQueries";
 import { SectionStepper } from "@/components/investigations/SectionStepper";
 import { OccurrenceTabs } from "@/components/occurrence/OccurrenceTabs";
+import { AdvisoryBanner } from "@/components/support/AdvisoryBanner";
+import { getRiskWarnings } from "@/lib/services/investigationSupportEngine";
 
 /**
  * FR-012 (Narrative), FR-027/FR-028/FR-066/FR-067 (Classification), FR-016-018
@@ -30,6 +32,7 @@ export default async function OccurrencePage({ params }: { params: Promise<{ id:
   if (!occurrence) notFound();
 
   const isReadOnly = investigation.status === "Review" || investigation.status === "Closed";
+  const riskWarnings = await getRiskWarnings(investigationId);
 
   return (
     <div className="flex">
@@ -42,6 +45,12 @@ export default async function OccurrencePage({ params }: { params: Promise<{ id:
           Investigations / {investigation.referenceNumber} / Occurrence Details
         </p>
         <h1 className="mt-2 text-xl font-semibold text-foreground">Occurrence Details</h1>
+
+        {riskWarnings.warnings.length > 0 && (
+          <div className="mt-4 max-w-2xl">
+            <AdvisoryBanner label={riskWarnings.label} items={riskWarnings.warnings} caption={riskWarnings.caption} />
+          </div>
+        )}
 
         <div className="mt-6">
           <OccurrenceTabs

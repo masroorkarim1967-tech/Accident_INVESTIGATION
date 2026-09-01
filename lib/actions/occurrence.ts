@@ -10,7 +10,7 @@ import {
   occurrenceOutcomeSchema,
   occurrenceOverrideSchema,
 } from "@/lib/validation/occurrence";
-import { suggestClassification, type ClassificationSuggestion } from "@/lib/services/suggestClassification";
+import { suggestClassification, type ClassificationSuggestion } from "@/lib/services/investigationSupportEngine/suggestClassification";
 import { calculateRiskScore, resolveRiskBand, resolveInvestigationPriority, moreSevere } from "@/lib/services/riskEngine";
 import { checkAndAdvanceStage } from "@/lib/services/stageTransition";
 import { UserRole } from "@/prisma/generated/prisma/client";

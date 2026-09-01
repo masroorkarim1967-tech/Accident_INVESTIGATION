@@ -4,6 +4,8 @@ import { db } from "@/lib/db";
 import { getInvestigationDetail } from "@/lib/services/investigationQueries";
 import { SectionStepper } from "@/components/investigations/SectionStepper";
 import { HazardPanel } from "@/components/hazard/HazardPanel";
+import { AdvisoryBanner } from "@/components/support/AdvisoryBanner";
+import { getRiskWarnings } from "@/lib/services/investigationSupportEngine";
 
 /**
  * FR-029/FR-030/FR-068 — Hazard Analysis. FR-069's Risk Band Configuration
@@ -31,6 +33,7 @@ export default async function HazardsPage({ params }: { params: Promise<{ id: st
   ]);
 
   const isReadOnly = investigation.status === "Review" || investigation.status === "Closed";
+  const riskWarnings = await getRiskWarnings(investigationId);
 
   return (
     <div className="flex">
@@ -47,6 +50,12 @@ export default async function HazardsPage({ params }: { params: Promise<{ id: st
           Configurable educational risk model — not an official regulatory risk matrix unless
           explicitly stated.
         </p>
+
+        {riskWarnings.warnings.length > 0 && (
+          <div className="mt-4 max-w-2xl">
+            <AdvisoryBanner label={riskWarnings.label} items={riskWarnings.warnings} caption={riskWarnings.caption} />
+          </div>
+        )}
 
         <div className="mt-6">
           <HazardPanel investigationId={investigation.id} hazards={hazards} bands={bands} readOnly={isReadOnly} />

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { suggestContributingFactors } from "@/lib/services/suggestContributingFactor";
+import { suggestContributingFactors } from "@/lib/services/investigationSupportEngine/suggestContributingFactor";
 
 describe("suggestContributingFactors (FR-033)", () => {
   it("returns no suggestions when there are no closed-investigation candidates", () => {
@@ -37,6 +37,7 @@ describe("suggestContributingFactors (FR-033)", () => {
     expect(result.length).toBeGreaterThan(0);
     expect(result[0].sourceReferenceNumber).toBe("INC-2025-0010");
     expect(result[0].description).toBe("Runway grooving was overdue for maintenance.");
+    expect(["Low", "Medium", "High"]).toContain(result[0].confidence);
   });
 
   it("excludes a candidate with a strong narrative match but zero recorded factors", () => {

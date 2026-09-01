@@ -5,6 +5,13 @@ import { getInvestigationDetail, listActiveInvestigators } from "@/lib/services/
 import { SectionStepper } from "@/components/investigations/SectionStepper";
 import { StageBadge } from "@/components/ui/StageBadge";
 import { AssignInvestigatorForm } from "@/components/investigations/AssignInvestigatorForm";
+import { AdvisoryBanner } from "@/components/support/AdvisoryBanner";
+import { CompletenessScoreGauge } from "@/components/support/CompletenessScoreGauge";
+import {
+  getChecklistSuggestions,
+  getMissingInformationWarnings,
+  getCompletenessScore,
+} from "@/lib/services/investigationSupportEngine";
 import { UserRole } from "@/prisma/generated/prisma/client";
 
 /**
@@ -39,6 +46,12 @@ export default async function InvestigationDetailPage({
   const canAssign =
     currentUser.role === UserRole.Administrator || currentUser.role === UserRole.InvestigationManager;
   const investigators = canAssign ? await listActiveInvestigators() : [];
+
+  const [checklist, missingInfo, completeness] = await Promise.all([
+    getChecklistSuggestions(investigationId),
+    getMissingInformationWarnings(investigationId),
+    getCompletenessScore(investigationId),
+  ]);
 
   return (
     <div className="flex">
@@ -127,6 +140,16 @@ export default async function InvestigationDetailPage({
               {investigation.assignedInvestigator?.name ?? "Not yet assigned"}
             </p>
           )}
+        </div>
+
+        <div className="mt-6 flex flex-col gap-4 md:max-w-2xl">
+          <CompletenessScoreGauge result={completeness} />
+          <AdvisoryBanner
+            label={checklist.label}
+            items={checklist.suggestions}
+            emptyMessage="No further steps suggested for this stage."
+          />
+          <AdvisoryBanner label={missingInfo.label} items={missingInfo.warnings} />
         </div>
       </div>
     </div>

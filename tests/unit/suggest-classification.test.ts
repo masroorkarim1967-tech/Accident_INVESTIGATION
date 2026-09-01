@@ -1,15 +1,23 @@
 import { describe, expect, it } from "vitest";
-import { suggestClassification } from "@/lib/services/suggestClassification";
+import { suggestClassification } from "@/lib/services/investigationSupportEngine/suggestClassification";
 
 describe("suggestClassification (FR-028, TS-032/TS-033 style)", () => {
   it("returns a confident match with matched keywords for a strong signal (TS-032)", () => {
     const result = suggestClassification(
-      "The aircraft experienced a runway excursion during landing rollout in wet conditions.",
+      "The aircraft experienced a runway excursion after it veered off the runway during landing rollout in wet conditions.",
     );
     expect(result).not.toBeNull();
     expect(result?.category).toBe("AircraftIncident");
     expect(result?.subcategory).toBe("Runway Excursion");
     expect(result?.matchedKeywords).toContain("runway excursion");
+    expect(result?.matchedKeywords).toContain("veered off the runway");
+    expect(result?.confidence).toBe("High");
+  });
+
+  it("returns Low/Medium confidence for a single, less specific keyword match", () => {
+    const result = suggestClassification("Pushback proceeded normally with no reported issues afterward.");
+    expect(result?.subcategory).toBe("Pushback/Towing Incident");
+    expect(result?.confidence).toBe("Low");
   });
 
   it("returns null (never a low-confidence guess) when no rule matches (TS-033)", () => {

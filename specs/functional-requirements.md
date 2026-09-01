@@ -143,6 +143,7 @@ follow-up.
 | 24 | Search and Filtering | FR-059 – FR-061 |
 | 25 | Audit/History Information | FR-062 – FR-064 |
 | 26 | Investigation Findings *(new — closes spec-review.md SR-008)* | FR-072 – FR-074 |
+| 27 | Investigation Support Engine *(new — closes spec-review.md SR-009)* | FR-075 – FR-080 |
 
 ---
 
@@ -1972,3 +1973,146 @@ entity — data-model.md §3.21).
   Remove action) cascades the citation link away but leaves the Finding itself intact, its chip for
   that item simply no longer rendered (not shown as "(removed)" — the link row is actually gone, not
   a dangling reference, since the underlying link table cascades on delete per `data-model.md` §3.22).
+
+---
+
+## 27. Investigation Support Engine *(new module — closes spec-review.md SR-009, Phase 11 of `implementation-plan.md`)*
+
+`assistance-engine.md` fully specified the Investigation Support Engine — three capabilities already
+covered by FR-028/FR-033/FR-036 (restated there for framework placement, not re-specified here) and
+six new capabilities with no corresponding functional requirements anywhere in this document. Added
+as module 27 (appended, not inserted, per §0.1's permanence rule) with the next available IDs. Every
+FR below is **Category A (Advisory)** per `assistance-engine.md` §3.3: never persisted, always
+recomputed fresh, informational only — no Accept/Dismiss, and never a second enforcement mechanism
+alongside `investigation-workflow.md` §8's gates. Every output is labeled exactly as the umbrella
+term plus its sub-label (`assistance-engine.md` §3.3); none may be phrased as official, regulatory,
+or authoritative (product-spec §11.1/§11.4/§11.5/§11.6).
+
+### FR-075 — Investigation Checklist Suggestions
+- **Purpose**: An active, prioritized short list of next steps for the investigation's current stage,
+  more directive than the passive Section Completeness Dots (`ui-spec.md` §2.3).
+- **User**: ADMIN, MANAGER, INVESTIGATOR (assigned/owning); REVIEWER/VIEWER see the same read-only
+  output where the page is otherwise visible to them.
+- **Inputs**: `Investigation.status`, the same gate criteria `investigation-workflow.md` §8 already
+  defines for automatic stage advancement (`lib/services/stageTransition.ts`'s gate-check functions —
+  the single source of truth, never independently reimplemented here), plus a small number of
+  best-practice checks beyond the minimum gate.
+- **Outputs**: Up to 5 suggestions, each restating an unmet gate item (or a best-practice tip) as a
+  plain-language next step, linking directly to the relevant section. Labeled "Investigation Support ·
+  Suggested Next Step."
+- **Validation Rules**: N/A (read-only, derived).
+- **Success Behavior**: Recomputed fresh on every page load; gate-relevant suggestions always sort
+  above best-practice ones.
+- **Error Behavior**: N/A.
+- **Empty State**: "No further steps suggested for this stage" when nothing is outstanding, rather
+  than an empty, unexplained list.
+- **Edge Cases**: A `Review` or `Closed` investigation shows no suggestions — the investigator cannot
+  self-advance either status (Review moves only by Reviewer decision; Closed only by Reopen).
+
+### FR-076 — Missing-Information Warnings
+- **Purpose**: Field-level gap-flagging, one level more granular than FR-075 — surfaces specific
+  optional-but-valuable fields left blank within a section already in progress.
+- **User**: ADMIN, MANAGER, INVESTIGATOR (assigned/owning); REVIEWER/VIEWER see the same read-only
+  output where the page is otherwise visible to them.
+- **Inputs**: A curated "valuable but optional" field per entity (e.g. `Aircraft.serialNumber`,
+  `Flight.picLicenseNumber`, `Location.weatherVisibility`, `RootCause.investigatorNotes`,
+  `CorrectiveAction.department`/`PreventiveAction.department`, `Evidence.investigatorNotes`,
+  `Witness.reliabilityNotes`, `Hazard.existingControls`, `Person.licenseNumber` for PIC/First Officer
+  roles) and each field's current value.
+- **Outputs**: One warning per gap, naming the exact field and the record it belongs to, linking to
+  the relevant section. Labeled "Investigation Support · Missing Information."
+- **Validation Rules**: N/A (read-only, derived).
+- **Success Behavior**: A warning fires only for a field on a record that already exists (the section
+  is already in progress) — never for a section nobody has touched yet, which is FR-075's job.
+- **Error Behavior**: N/A.
+- **Empty State**: Zero warnings for a section with every curated field populated — silence is the
+  expected, positive outcome, not a fallback state needing its own message.
+- **Edge Cases**: A section covered by an explicit "not applicable" acknowledgment (e.g.
+  `noPersonsInvolvedConfirmed = TRUE`) never produces a warning for that section.
+
+### FR-077 — Investigation Completeness Score
+- **Purpose**: A single percentage summarizing how much of the *expected* structured data has been
+  captured for the investigation's current stage — a coverage metric, not a quality or correctness
+  measure.
+- **User**: ADMIN, MANAGER, INVESTIGATOR, REVIEWER (all with view access); VIEWER on non-draft
+  investigations.
+- **Inputs**: Presence/absence of every field the completeness gate (`investigation-workflow.md` §8)
+  and the FR-076 best-practice field list care about, each weighted (gate-required fields weighted
+  higher than optional fields), evaluated cumulatively through every stage the investigation has
+  already reached — a `Draft` investigation is never penalized for lacking Root Cause data that
+  isn't relevant yet.
+- **Outputs**: A percentage plus a per-section breakdown, always paired with the fixed caption
+  "Reflects data completeness only — not investigation quality or correctness." Labeled "Investigation
+  Support · Completeness Score."
+- **Validation Rules**: N/A (read-only, derived).
+- **Success Behavior**: Recomputed fresh on every page load; a stage-contextualized message
+  accompanies the number (e.g. "54% complete — on track for the Draft stage") rather than a bare,
+  unqualified figure.
+- **Error Behavior**: N/A.
+- **Empty State**: N/A — always renders a value.
+- **Edge Cases**: A low score on a freshly-created investigation is normal and expected, not an error
+  condition; the score carries no confidence tier (`assistance-engine.md` §3.4) — it is a precise
+  calculation, not an inference.
+
+### FR-078 — Risk Warnings
+- **Purpose**: Flag risk-related conditions that deserve attention before they're overlooked.
+- **User**: ADMIN, MANAGER, INVESTIGATOR (assigned/owning); REVIEWER/VIEWER see the same read-only
+  output where the page is otherwise visible to them.
+- **Inputs**: `Hazard` initial/residual risk bands and linked Preventive Actions, `Occurrence`
+  Investigation Priority and `Investigation.status`/time-in-status, evaluated against knowledge-base
+  thresholds (e.g. 48 hours for an `Immediate`-priority investigation still `Open`,
+  `assistance-engine.md` AE-4).
+- **Outputs**: One warning per matched rule, referencing the specific Hazard or Occurrence, linking to
+  the relevant section, alongside a standing risk-model disclaimer (product-spec §11.5). Labeled
+  "Investigation Support · Risk Warning."
+- **Validation Rules**: N/A (read-only, derived).
+- **Success Behavior**: Recomputed fresh on every page load; each rule is a clear threshold condition,
+  never a judgment call.
+- **Error Behavior**: N/A.
+- **Empty State**: Zero warnings when no rule matches — a normal, expected outcome.
+- **Edge Cases**: Warnings remain visible (read-only, present tense) after closure — a closed
+  investigation's risk picture is still useful historical context, not something to hide.
+
+### FR-079 — Corrective-Action Reminders
+- **Purpose**: Proactive, time-based nudges about actions approaching or past their target date — more
+  specific than the Overdue badge (FR-046) alone, and specifically calling out actions that are both
+  time-sensitive *and* required for closure.
+- **User**: ADMIN, MANAGER, INVESTIGATOR (assigned/owning); REVIEWER/VIEWER see the same read-only
+  output where the page is otherwise visible to them.
+- **Inputs**: `CorrectiveAction`/`PreventiveAction` `targetDate`, `status`, `requiredForClosure`, and
+  `Investigation.status`, using the same Overdue definition as FR-046
+  (`lib/services/overdueComputation.ts`) so the two never disagree.
+- **Outputs**: One reminder per matched rule, linking to the action. Labeled "Investigation Support ·
+  Action Reminder."
+- **Validation Rules**: N/A (read-only, derived).
+- **Success Behavior**: An action due within 7 days and not yet `Completed` produces a reminder; an
+  Overdue **and** `requiredForClosure = TRUE` action on an investigation already in `Review` produces
+  an escalated reminder; an action with no owner assigned produces a distinct reminder (never expected
+  to fire in practice, since EC-14 guarantees every action has an owner at save time — included
+  defensively).
+- **Error Behavior**: N/A.
+- **Empty State**: Zero reminders when no action matches — a normal, expected outcome.
+- **Edge Cases**: `Completed`, `Verified`, and `Cancelled` actions never generate reminders, regardless
+  of date (mirrors FR-046's Overdue exclusion rule exactly).
+
+### FR-080 — Report Quality Checks
+- **Purpose**: A pre-flight list of every gap the generated report (`report-spec.md`) would itself
+  render as "Not established," surfaced proactively in one consolidated place — most valuably before
+  Submit for Review, so gaps are visible while still cheap to fix.
+- **User**: ADMIN, MANAGER, INVESTIGATOR (assigned/owning); REVIEWER/VIEWER see the same read-only
+  output where the page is otherwise visible to them.
+- **Inputs**: The same structural-completeness rules `report-spec.md` §5.9/§5.10/§5.13/§5.17 already
+  define for the analytical (Investigator Assessment) sections — this capability enumerates them, it
+  does not invent a parallel gap-detection mechanism.
+- **Outputs**: A consolidated list, each item linking to the relevant section. Labeled "Investigation
+  Support · Report Quality Check."
+- **Validation Rules**: N/A (read-only, derived).
+- **Success Behavior**: Structural completeness and consistency only — this capability performs no
+  writing-quality, grammar, or narrative-tone assessment.
+- **Error Behavior**: N/A.
+- **Empty State**: An explicit "No report quality issues found" positive confirmation when nothing is
+  outstanding — unlike FR-076, where silence alone would be ambiguous, this capability always renders
+  a result, positive or negative.
+- **Edge Cases**: Some overlap with FR-076 on genuinely analytical fields (e.g. an action's Department)
+  is expected and acceptable (`assistance-engine.md` §3.7) — outputs are not required to be mutually
+  exclusive across capabilities.

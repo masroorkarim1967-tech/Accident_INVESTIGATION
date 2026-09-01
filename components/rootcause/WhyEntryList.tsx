@@ -5,6 +5,8 @@ import Link from "next/link";
 import type { FiveWhysAnalysis, FiveWhysEntry } from "@/prisma/generated/prisma/client";
 import { Button } from "@/components/ui/Button";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
+import { SuggestionChip } from "@/components/ui/SuggestionChip";
+import { SUPPORT_LABELS } from "@/lib/services/investigationSupportEngine/labels";
 import {
   saveWhyEntryAction,
   removeWhyEntryAction,
@@ -87,7 +89,7 @@ export function WhyEntryList({
   readOnly: boolean;
 }) {
   const [editingId, setEditingId] = useState<number | "new" | null>(null);
-  const [suggestedQuestion, setSuggestedQuestion] = useState<string | null>(null);
+  const [suggestedQuestion, setSuggestedQuestion] = useState<{ question: string; confidence: "High" | "Low" } | null>(null);
   const [suggestPending, setSuggestPending] = useState(false);
   const [suggestError, setSuggestError] = useState<string | null>(null);
 
@@ -109,10 +111,18 @@ export function WhyEntryList({
     if (result.error) {
       setSuggestError(result.error);
     } else if (result.suggestion) {
-      // FR-036 edge case: replaces the pending draft rather than stacking a second one.
-      setSuggestedQuestion(result.suggestion.question);
-      setEditingId("new");
+      // FR-036 edge case: replaces the pending suggestion rather than stacking a second one.
+      setSuggestedQuestion(result.suggestion);
     }
+  }
+
+  function handleAcceptSuggestion() {
+    if (!suggestedQuestion) return;
+    setEditingId("new");
+  }
+
+  function handleDismissSuggestion() {
+    setSuggestedQuestion(null);
   }
 
   return (
@@ -163,12 +173,23 @@ export function WhyEntryList({
           investigationId={investigationId}
           analysisId={analysis.id}
           entry={null}
-          prefillQuestion={suggestedQuestion}
+          prefillQuestion={suggestedQuestion?.question}
           onDone={() => { setEditingId(null); setSuggestedQuestion(null); }}
         />
       )}
 
-      {!readOnly && editingId !== "new" && sorted.length < MAX_ENTRIES && (
+      {!readOnly && editingId !== "new" && suggestedQuestion && (
+        <SuggestionChip
+          label={SUPPORT_LABELS.followUpQuestion}
+          onAccept={handleAcceptSuggestion}
+          onDismiss={handleDismissSuggestion}
+        >
+          <p>{suggestedQuestion.question}</p>
+          <p className="mt-1 text-xs text-muted">Confidence: {suggestedQuestion.confidence}</p>
+        </SuggestionChip>
+      )}
+
+      {!readOnly && editingId !== "new" && !suggestedQuestion && sorted.length < MAX_ENTRIES && (
         <div className="flex flex-wrap items-center gap-2">
           <Button type="button" variant="secondary" onClick={() => { setSuggestedQuestion(null); setEditingId("new"); }}>
             + Add Why #{sorted.length + 1}

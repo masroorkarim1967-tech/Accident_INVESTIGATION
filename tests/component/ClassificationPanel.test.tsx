@@ -65,6 +65,7 @@ describe("ClassificationPanel — Suggested Classification (rule-based, not AI)"
         category: "AircraftIncident",
         subcategory: "Runway Excursion",
         matchedKeywords: ["runway", "excursion"],
+        confidence: "High",
       },
     });
 
@@ -97,6 +98,7 @@ describe("ClassificationPanel — Suggested Classification (rule-based, not AI)"
         category: "GroundHandlingIncident",
         subcategory: "Ramp Collision",
         matchedKeywords: ["ramp"],
+        confidence: "Low",
       },
     });
 

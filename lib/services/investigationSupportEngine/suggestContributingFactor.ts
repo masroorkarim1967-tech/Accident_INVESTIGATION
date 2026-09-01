@@ -1,4 +1,5 @@
 import type { FactorCategory } from "@/prisma/generated/prisma/client";
+import type { ConfidenceTier } from "./confidence";
 
 /**
  * FR-033 — Generate Potential Contributing Factors (Investigation Support).
@@ -7,6 +8,12 @@ import type { FactorCategory } from "@/prisma/generated/prisma/client";
  * similarity", assistance-engine.md §4.3's "keyword/TF-IDF-style
  * comparison") — no external AI service. Never auto-added; the caller
  * always routes an accepted suggestion through FR-031's normal save path.
+ * Category B, Inferential (assistance-engine.md §3.3/§3.4). Moved here
+ * from lib/services/suggestContributingFactor.ts as part of Phase 11's
+ * consolidation — similarity scoring is identical to the Phase 8 original;
+ * this pass adds the `confidence` tier bucketed from `similarityScore`,
+ * closing the same §3.4 gap fixed for Suggested Classification (a raw
+ * score alone is not the mandated Low/Medium/High label).
  */
 
 const STOPWORDS = new Set([
@@ -46,12 +53,21 @@ export interface ContributingFactorSuggestion {
   category: FactorCategory;
   sourceReferenceNumber: string;
   similarityScore: number;
+  confidence: ConfidenceTier;
 }
 
 // assistance-engine.md §3.4's performance note: bounded scan, fixed caps.
 const MAX_SOURCE_INVESTIGATIONS = 5;
 const MAX_SUGGESTIONS = 10;
 const MIN_SIMILARITY = 0.05;
+const HIGH_SIMILARITY = 0.25;
+const MEDIUM_SIMILARITY = 0.12;
+
+function confidenceFor(score: number): ConfidenceTier {
+  if (score >= HIGH_SIMILARITY) return "High";
+  if (score >= MEDIUM_SIMILARITY) return "Medium";
+  return "Low";
+}
 
 export function suggestContributingFactors(
   currentNarrative: string,
@@ -78,6 +94,7 @@ export function suggestContributingFactors(
         category: factor.category,
         sourceReferenceNumber: candidate.referenceNumber,
         similarityScore: score,
+        confidence: confidenceFor(score),
       });
       if (suggestions.length >= MAX_SUGGESTIONS) return suggestions;
     }

@@ -11,7 +11,8 @@ import {
   generateContributingFactorSuggestionsAction,
   type ContributingFactorActionState,
 } from "@/lib/actions/contributingFactor";
-import type { ContributingFactorSuggestion } from "@/lib/services/suggestContributingFactor";
+import type { ContributingFactorSuggestion } from "@/lib/services/investigationSupportEngine/suggestContributingFactor";
+import { SUPPORT_LABELS } from "@/lib/services/investigationSupportEngine/labels";
 
 const FACTOR_CATEGORIES = [
   "HumanFactors", "Equipment", "Environment", "Procedures", "Training",
@@ -212,13 +213,13 @@ export function ContributingFactorPanel({
               {suggestions.map((s, i) => (
                 <SuggestionChip
                   key={i}
-                  label="Investigation Support · Potential Contributing Factor"
+                  label={SUPPORT_LABELS.contributingFactorSuggestion}
                   onAccept={() => acceptSuggestion(s)}
                   onDismiss={() => setSuggestions((prev) => prev?.filter((x) => x !== s) ?? null)}
                 >
                   <p>{s.description}</p>
                   <p className="mt-1 text-xs text-muted">
-                    {FACTOR_CATEGORY_LABELS[s.category]} · from {s.sourceReferenceNumber}
+                    {FACTOR_CATEGORY_LABELS[s.category]} · from {s.sourceReferenceNumber} · Confidence: {s.confidence}
                   </p>
                 </SuggestionChip>
               ))}
