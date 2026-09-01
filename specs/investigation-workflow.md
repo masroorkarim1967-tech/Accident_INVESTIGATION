@@ -4,6 +4,34 @@ This revision replaces the previous 5-state workflow (`Draft/Open/Under Review/C
 Requested/Closed`) with the 6-state model and 16-step sequence specified for this pass. See §12 for
 what this changes relative to other spec files and what follow-up is still needed.
 
+## Pipeline Overview
+
+A simplified, conceptual view of the investigation pipeline — useful as a first mental model before
+the precise mechanics in §2 (16-Step Sequence) and §5 (Sequence-to-Stage Diagram). This diagram
+groups activity by *kind* (fact-gathering, risk assessment, causal analysis, corrective action,
+closure) rather than by exact implementation order; where the two differ, §2/§5 are authoritative.
+One notable difference worth flagging so this overview doesn't mislead: this application computes
+Risk Assessment (FR-066/FR-067) as part of Occurrence Classification — step 4, in the **Open**
+stage — deliberately *before* Evidence/Witness collection, so an investigation gets an early triage
+signal as soon as it's classified, rather than waiting until fact-finding is complete.
+
+```mermaid
+flowchart TD
+    A["Aviation Incident"] --> B["Investigation Case"]
+    B --> C["Occurrence"]
+    B --> D["Evidence"]
+    B --> E["Witnesses"]
+    C --> F["Facts & Findings"]
+    D --> F
+    E --> F
+    F --> G["Risk Assessment"]
+    G --> H["Contributing Factors"]
+    H --> I["5 Whys / Root Cause Analysis"]
+    I --> J["Corrective / Preventive Actions"]
+    J --> K["Review & Close"]
+    K --> L["Final Report"]
+```
+
 ## 1. Design Principles
 
 - **Section editing stays non-linear; the *stage* is a computed progress marker, not a lock.** Any
