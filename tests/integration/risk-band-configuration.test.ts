@@ -182,4 +182,21 @@ describe.skipIf(!process.env.DATABASE_URL)("Risk Band Configuration (FR-069)", (
 
     await db.investigation.delete({ where: { id: investigation.id } });
   });
+
+  it("rejects a colorHint outside the set the shared badge components render (negative, spec-review.md SR-015)", async () => {
+    await mockUser(UserRole.Administrator, "a.whitfield@investigations.example");
+    const { saveRiskBandsAction } = await import("@/lib/actions/riskBandConfiguration");
+
+    const invalidSet = [
+      { minScore: 1, maxScore: 25, bandLabel: "Everything", colorHint: "not-a-real-color", displayOrder: 0, isActive: true },
+    ];
+    const formData = new FormData();
+    formData.set("bandsJson", JSON.stringify(invalidSet));
+    const result = await saveRiskBandsAction({ error: null }, formData);
+    expect(result.error).toMatch(/green, amber, orange, red/);
+
+    // No partial write — the table still holds the pre-existing snapshot.
+    const current = await db.riskBandConfiguration.findMany();
+    expect(current.some((b) => b.bandLabel === "Everything")).toBe(false);
+  });
 });

@@ -1,9 +1,10 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import type { Occurrence } from "@/prisma/generated/prisma/client";
 import { Button } from "@/components/ui/Button";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
+import { useUnsavedChangesWarning } from "@/hooks/useUnsavedChangesWarning";
 import { saveOccurrenceNarrativeAction, type OccurrenceActionState } from "@/lib/actions/occurrence";
 
 const PHASES_OF_FLIGHT = [
@@ -35,8 +36,19 @@ export function NarrativeForm({
   // with no visible error. Found during Phase 5 live browser verification.
   const [phaseOfFlight, setPhaseOfFlight] = useState(occurrence.phaseOfFlight ?? "");
 
+  // edge-cases.md EC-17 — a beforeunload warning while this form has
+  // unsaved edits. Any field change marks it dirty; a successful save
+  // (pending transitions true -> false with no error) clears it.
+  const [isDirty, setIsDirty] = useState(false);
+  const wasPending = useRef(false);
+  useEffect(() => {
+    if (wasPending.current && !pending && !state.error) setIsDirty(false);
+    wasPending.current = pending;
+  }, [pending, state.error]);
+  useUnsavedChangesWarning(isDirty);
+
   return (
-    <form action={formAction} className="flex max-w-2xl flex-col gap-4">
+    <form action={formAction} onChange={() => setIsDirty(true)} className="flex max-w-2xl flex-col gap-4">
       {state.error && <ErrorBanner message={state.error} />}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">

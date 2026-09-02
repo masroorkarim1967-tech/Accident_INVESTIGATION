@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireInvestigationEditAccess } from "@/lib/auth/requireInvestigationEditAccess";
+import { verifyOrigin } from "@/lib/auth/verifyOrigin";
 import { AuthorizationError, NotFoundError } from "@/lib/errors";
 import { PostgresBlobStorageProvider } from "@/lib/services/storage/PostgresBlobStorageProvider";
 import {
@@ -24,6 +25,12 @@ const EDIT_ROLES = [UserRole.Administrator, UserRole.InvestigationManager, UserR
  * still applies before any bytes are read from the request.
  */
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  // security-spec.md §4 — checked first, before any other logic, same as
+  // requireRole's own convention.
+  if (!verifyOrigin(request)) {
+    return NextResponse.json({ error: { code: "FORBIDDEN", message: "Request origin not permitted." } }, { status: 403 });
+  }
+
   const { id } = await params;
   const evidenceId = Number(id);
   if (!Number.isInteger(evidenceId)) {

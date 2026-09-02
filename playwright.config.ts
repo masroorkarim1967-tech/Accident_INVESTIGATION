@@ -16,12 +16,18 @@ export default defineConfig({
   testDir: "./tests/e2e",
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 1 : 0,
+  // 1 retry locally too (not just in CI) — a long suite run against a
+  // free-tier Neon dev branch occasionally hits a single slow query that
+  // blows a 30s navigation timeout under sustained load (found during
+  // Phase 15's full-suite verification); a retry absorbs that transient
+  // latency without masking a genuine failure, which would fail again.
+  retries: 1,
   workers: 1,
   reporter: "list",
   use: {
     baseURL: process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000",
     trace: "on-first-retry",
+    navigationTimeout: 45000,
   },
   projects: [
     {

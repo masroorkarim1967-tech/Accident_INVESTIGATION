@@ -228,8 +228,9 @@ narrative of how the roles above move an incident through the system.
   report with no missing or silently-skipped sections.
 - The dashboard gives an at-a-glance statistical view of the (seeded) incident portfolio, computed
   from live data.
-- The application runs from a single `docker run` / `docker compose up` with no environment variables
-  required beyond optional overrides (port, session secret) — no API keys of any kind.
+- The application deploys to Vercel from a `git push` with no environment variables required beyond
+  `security-spec.md` §8's fixed list (database connection strings, session secret, canonical URL) —
+  no API keys of any kind.
 - The specs and codebase are clean enough to walk a technical reviewer through the design in an
   interview setting.
 
@@ -363,9 +364,10 @@ realistic domain behavior and because it demonstrates sound practice:
 
 ## 13. Public Deployment Considerations
 
-- **Single container, no external services**: the app runs as one Docker container (API + built
-  frontend + embedded SQLite), configured entirely through environment variables, with no API keys
-  of any kind (ties to NFR-1.1–1.4, NFR-8.1–8.2).
+- **One Vercel project, one free-tier Neon database, no other external services**: the app deploys
+  as a single Next.js project (frontend and backend unified, no separate container/API service),
+  configured entirely through environment variables, with no API keys of any kind (ties to
+  NFR-1.1–1.4, NFR-8.1–8.2).
 - **Demo credential exposure is a deliberate, documented trade-off**: because there is no
   self-registration, demo credentials for each role are shown on the login screen so any visitor can
   explore the full role-based workflow (`ui-spec.md` UI-2). This makes periodic dataset reset
@@ -376,10 +378,11 @@ realistic domain behavior and because it demonstrates sound practice:
   Portfolio Project" for the same reason.
 - **Abuse protection**: basic rate limiting on the login endpoint and on write endpoints generally,
   since the deployment is open to public traffic without a registration gate (ties to NFR-4.6).
-- **Resource sizing**: a single small container with an embedded SQLite database is sufficient at
-  demo scale (tens to low hundreds of incidents). The system is explicitly not designed for
-  high-concurrency, multi-tenant production load (ties to NFR §11 non-goals).
-- **Operational health**: a lightweight `/health` endpoint supports uptime checks by the hosting
+- **Resource sizing**: *(superseded by `technical-architecture.md` §1/§5.1)* Vercel's Hobby tier
+  plus Neon's free-tier Postgres is sufficient at demo scale (tens to low hundreds of incidents).
+  The system is explicitly not designed for high-concurrency, multi-tenant production load (ties to
+  NFR §11 non-goals).
+- **Operational health**: a lightweight `/api/health` endpoint supports uptime checks by the hosting
   platform (ties to NFR-8.3).
 
 ## Appendix A: Assumptions Register
@@ -391,15 +394,15 @@ and new IDs (A11+) are added rather than renumbering existing ones.
 
 | # | Area | Assumption | Rationale |
 |---|------|------------|-----------|
-| A1 | Frontend stack | React + TypeScript (Vite) | Industry-standard, strong portfolio signal, fast dev server |
-| A2 | Backend stack | Node.js + Express + TypeScript | Pairs naturally with React/TS, simple to containerize |
-| A3 | Database | SQLite (file-based, embedded via `better-sqlite3`) | Satisfies "local database", zero external DB service, trivially deployable |
+| A1 | Frontend stack | *(superseded by `technical-architecture.md` §1)* Next.js (App Router), React + TypeScript — not a standalone Vite SPA | Unifies frontend and backend in one deployable Vercel project; industry-standard, strong portfolio signal |
+| A2 | Backend stack | *(superseded — see A1)* Next.js Server Actions and Route Handlers, TypeScript — no separate Express/REST service | Pairs naturally with the Next.js frontend; no CORS/separate-deploy overhead |
+| A3 | Database | *(superseded — see A1)* PostgreSQL via Neon (free serverless tier), not SQLite | Zero-cost managed Postgres with native Vercel integration; satisfies "no paid/managed external service" the same way the original SQLite choice intended |
 | A4 | "AI" feature interpretation | Local, deterministic, rule-based decision-support (no LLM, no external API), branded in-product as "Investigation Support" | User explicitly forbids external API keys; see §11 for the mandatory wording policy |
 | A5 | Authentication | Simplified seeded-account, session-based login across 5 roles (Administrator, Investigation Manager, Investigator, Reviewer, Viewer), with authorization enforced behind an abstract role-check middleware so a stronger auth mechanism can be substituted later without touching business logic | Needed to demonstrate role-based, separation-of-duties workflow on a public deployment; explicitly required to remain extensible per this revision |
-| A6 | File/evidence attachments | Stored on local disk under an app-managed directory, referenced by path in DB, accessed only through a `StorageProvider` abstraction; seed/demo data uses labeled simulated attachments rather than fabricated binary content (`data-model.md` §6.10) | No external object storage (e.g. S3) permitted without API keys; the abstraction keeps a future real-storage backend a configuration change, not a rewrite |
+| A6 | File/evidence attachments | *(corrected by `technical-architecture.md` §9, a **required** correction, not optional — local disk does not function on Vercel's serverless filesystem)* Stored as `Bytes` columns in Postgres, referenced by an opaque storage key, accessed only through a `StorageProvider` abstraction; seed/demo data uses labeled simulated attachments rather than fabricated binary content (`data-model.md` §6.10) | No external object storage (e.g. S3) permitted without API keys; the abstraction keeps a future real-storage backend a configuration change, not a rewrite |
 | A7 | Report export | Print-optimized HTML report (browser "Save as PDF") as primary export; server-side PDF generation noted as optional future enhancement | Avoids fragile headless-browser deployment dependencies (e.g. Puppeteer) on constrained hosts |
 | A8 | Data realism | All seed data is fictional; aircraft registrations, names, and locations are invented and clearly non-real; no real aviation, regulatory, or personal data anywhere in the system | Required by project rules (simulated/fictional data only) and by §11's authoritativeness boundary |
-| A9 | Deployment target | Single-container Docker deployment; SQLite file on a persistent volume | Matches "no external services", "public internet deployable" |
+| A9 | Deployment target | *(superseded — see A1)* Vercel (zero-config Next.js hosting); no Docker/container image, no persistent volume — the database lives in Neon, not on the app server | Matches "no external services", "public internet deployable" |
 | A10 | Localization | English only, single timezone display (UTC, with local-time field alongside) | Keeps scope bounded; aviation incident timestamps are conventionally recorded in UTC |
 | A11 | Role model | Five roles: Administrator, Investigation Manager, Investigator, Reviewer, Viewer — Investigation Manager and Reviewer are kept distinct to model real separation of duties (assignment/oversight vs. independent sign-off) | Explicit requirement of this revision; supersedes the earlier 4-role (Admin/Investigator/Reviewer/Viewer) model used in `functional-requirements.md` pending its follow-up update |
 | A12 | Suggestion terminology | All generated/assisted content must use exactly one of: "Investigation Support," "Suggested Classification," "Potential Contributing Factor," "Recommended Follow-up" — never "Finding," "Determination," or similar authoritative language | Explicit requirement of this revision; see §11.1 |

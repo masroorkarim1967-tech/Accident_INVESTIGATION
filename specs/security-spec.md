@@ -113,6 +113,21 @@ These take precedence over any implementation convenience:
 - The Credentials-provider implementation is deliberately isolated behind Auth.js's provider
   abstraction (`product-spec.md` §8.3) specifically so a stronger mechanism (real OAuth/SSO, MFA)
   can be substituted later as a configuration change, not an authentication rewrite.
+- **[New] Session lifetime** (closes spec-review.md SR-019): sessions use an explicit **8-hour
+  absolute lifetime** (`session.maxAge` in `lib/auth/index.ts`), not an indefinite one — a session
+  is never valid past 8 hours from sign-in regardless of activity; there is no rolling/idle-based
+  extension (Auth.js's default `updateAge`, which governs that, never triggers before this shorter
+  absolute cap is reached). A user whose session expires is redirected to `/login` on their next
+  request via the existing unauthenticated-request handling (`proxy.ts`) — no separate mechanism was
+  needed.
+- **[New] Password policy** (closes spec-review.md SR-019): there is no self-registration and no
+  Administrator "Add User" flow yet (`product-spec.md` A5), so this applies only to the seed
+  script's demo accounts today — every seeded password is at least 12 characters with mixed case, a
+  digit, and a symbol (`lib/data/demoAccounts.ts`'s `DEMO_PASSWORD`). Any future credential-set flow
+  (self-service change, Administrator-created account) must enforce the same 12-character minimum
+  via its Zod schema before this becomes user-facing; no additional complexity rule (character-class
+  mix) is mandated beyond the length floor, since this is a demo application with no real user data
+  at stake.
 
 ## 6. Authorization
 
@@ -349,22 +364,34 @@ yet reflected in the files that would ultimately implement them, and should be i
   production (`technical-architecture.md` §4.4's addendum has the full account). All four are
   verified present on live responses, including `robots.txt`, which is deliberately exempt from the
   auth proxy but still gets these headers independently. **Origin-header verification for
-  state-changing Route Handlers** (§4) remains genuinely pending — there is no custom
-  state-changing Route Handler yet to protect (only the Auth.js route exists, which handles its own
-  CSRF); add this when Phase 6 introduces the evidence-upload Route Handler.
-- **Least-privilege database role** (§7): still pending — this is a Postgres role/grant configured
-  against the actual provisioned production database, not something expressible in application code;
-  tracked as a Phase 16 deployment-time action item.
+  state-changing Route Handlers** (§4): **resolved** (Phase 15) — `lib/auth/verifyOrigin.ts` checked
+  first, before any other logic, in the evidence-upload Route Handler
+  (`app/api/evidence/[id]/attachment/route.ts`), the one custom state-changing Route Handler that
+  exists (confirmed by grepping every `app/api/**/route.ts` for a POST/PUT/PATCH/DELETE export); the
+  Auth.js route still handles its own CSRF independently.
+- **Least-privilege database role** (§7): partially resolved (Phase 15) — `prisma/least-privilege-role.sql`
+  documents the exact CRUD-only grant (no DDL/`CREATE`/`ALTER`/`DROP`) a real deployment applies to
+  its runtime role. A test creates a temporary role with that same grant shape against the
+  development database, confirms a schema-altering statement over its connection is rejected while
+  ordinary CRUD succeeds, then drops the role — self-contained, no persisted extra credential to
+  manage (`tests/integration/least-privilege-role.test.ts`). The application's own runtime
+  `DATABASE_URL` was deliberately left unchanged for local development (switching it is a deploy-time
+  config change, not a code change) — provisioning and
+  switching to the equivalent role against the actual **production** database remains a Phase 16
+  deployment-time action item, using the same `prisma/least-privilege-role.sql` script.
 - **Login success logging and the `LoginAttempt` rate-limit table's exact shape** (§11, §14):
   **resolved** — `LoginAttempt` was formalized in `data-model.md` §3.25 during Phase 2
   (`implementation-plan.md`), closing spec-review.md SR-010.
 - **Dependency scanning (Dependabot) and GitHub secret scanning/push protection** (§9, §16):
-  `.github/dependabot.yml` was added during Phase 1 (pulled forward since it cost nothing to add
-  early). GitHub secret scanning/push protection are repository *settings*, not files: a GitHub
-  repository now exists and is the project's origin remote, so these can be enabled directly in its
-  Settings whenever convenient — this is no longer blocked on repository creation, only on someone
-  visiting that settings page. Still tracked as a Phase 16 deployment-time action item alongside the
-  least-privilege database role above, since neither is expressible in application code.
+  **resolved** — `.github/dependabot.yml` was added during Phase 1; secret scanning and push
+  protection were confirmed **already enabled** on the repository during Phase 15 (`gh api
+  repos/{owner}/{repo} --jq '.security_and_analysis'` shows both `"status": "enabled"`), so no
+  action was needed. **Branch protection on `main`** (require a reviewed PR before merge) is a
+  separate setting from secret scanning and was deliberately **not** enabled during Phase 15 — the
+  project has been using direct pushes to `main` throughout development, and enabling it would
+  change that workflow immediately rather than at a deliberate cutover point; left as the
+  Administrator's own call for whenever the project moves toward its Phase 16 production
+  deployment, not enabled unilaterally.
 
 Independent of this pass, `report-spec.md`'s partially-resolved
 `InvestigationHistory`/`InvestigationReview` timeline interleaving remains outstanding.

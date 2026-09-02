@@ -1769,16 +1769,18 @@ requirement rather than leaving it undocumented.
   including a disclaimer and, per product-spec §11.2, a statement that any accepted Investigation
   Support suggestions were human-reviewed.
 - **Validation Rules**: The requesting user must have view access to the investigation (FR-007's
-  scoping); VIEWER is blocked from `DRAFT`/`OPEN`/`UNDER_REVIEW`/`CHANGES_REQUESTED` reports.
+  scoping); VIEWER is blocked from a non-`Closed` investigation's report (any of
+  `Draft`/`Open`/`UnderInvestigation`/`Analysis`/`Review`).
 - **Success Behavior**: Report renders in under 1 second (NFR-3.3) and always reflects live data,
-  except that once `CLOSED` the underlying data cannot change (FR-011), so the report is effectively
+  except that once `Closed` the underlying data cannot change (FR-011), so the report is effectively
   stable from that point on.
 - **Error Behavior**: A rendering failure for one section (e.g., malformed data from a legacy import)
   shows that section as "Unable to render this section" rather than failing the whole report.
 - **Empty State**: Every section renders even when empty, using explicit "No … recorded" text
   (`report-spec.md` §4), so the report is always structurally complete.
-- **Edge Cases**: A `DRAFT`/`OPEN`/`UNDER_REVIEW`/`CHANGES_REQUESTED` investigation's report shows a
-  prominent "DRAFT" watermark/badge (`report-spec.md` §6); this disappears only once `CLOSED`.
+- **Edge Cases**: A non-`Closed` investigation's report (any of
+  `Draft`/`Open`/`UnderInvestigation`/`Analysis`/`Review`) shows a prominent "DRAFT" watermark/badge
+  (`report-spec.md` §6); this disappears only once `Closed`.
 
 ### FR-057 — Export Report to PDF (Print)
 - **Purpose**: Produce a portable, offline-viewable copy of the report.
@@ -1838,8 +1840,8 @@ requirement rather than leaving it undocumented.
   (FR-004) lands here with the relevant filter pre-applied.
 - **Validation Rules**: Date Range "from" must be ≤ "to" when both are provided; an invalid range is
   rejected inline before the filter is applied.
-- **Success Behavior**: Multiple filters combine with AND logic (e.g., Status=OPEN AND
-  Severity=Accident); filters persist across pagination (FR-008).
+- **Success Behavior**: Multiple filters combine with AND logic (e.g., Status=Open AND
+  Severity=Catastrophic); filters persist across pagination (FR-008).
 - **Error Behavior**: An invalid date range shows an inline message and does not apply until
   corrected.
 - **Empty State**: No results under the current filter combination shows "No investigations match

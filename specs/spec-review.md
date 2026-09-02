@@ -422,31 +422,36 @@ referenced but never modeled.)*
 
 ## 4. Summary Table
 
-| ID | Category | Priority | One-line description |
-|---|---|---|---|
-| SR-001 | Contradiction / Unimplementable | **Critical** | FR-023/FR-055 specify `LocalDiskStorageProvider`, which does not work on Vercel |
-| SR-002 | Unimplementable / Missing field | **Critical** | `Attachment` entity missing the `Bytes` column the architecture requires |
-| SR-003 | Contradiction | **High** | `functional-requirements.md` still uses the retired 5-state model/entity names |
-| SR-004 | Contradiction / Duplicate | **High** | FR-066's outcome-severity enum still lists retired value `Hazardous` |
-| SR-005 | Contradiction | **Medium** | FR-030 references retired unified `Action.hazardId` |
-| SR-006 | Contradiction | **Medium** | FR-062/FR-063 cite non-existent `report-spec.md` §3.18/§3.19 |
-| SR-007 | Contradiction | **Medium** | Seven files carry a stale "report-spec.md not updated" note |
-| SR-008 | Missing requirement / Feature gap | **High** | Investigation Findings has no functional requirements |
-| SR-009 | Missing requirement | **Medium** | Six Assistance Engine capabilities have no FRs |
-| SR-010 | Missing DB relationship | **High** | `LoginAttempt`/`UploadAttempt` referenced but never modeled |
-| SR-011 | Ambiguous / Feature gap | **Medium** | "Continue as Viewer" mechanism unreconciled with session-based auth |
-| SR-012 | Ambiguous | **Medium** | "Reporter" field resolved two different ways in two files |
-| SR-013 | Ambiguous | **Low** | Reference-number year-rollover behavior only implied |
-| SR-014 | Missing validation | **Medium** | Text field max-lengths not folded back into `data-model.md` |
-| SR-015 | Missing validation | **Low** | `RiskBandConfiguration.colorHint` has no format constraint |
-| SR-016 | Missing validation / edge case | **Medium** | No handling for assigned Investigator losing role eligibility |
-| SR-017 | Missing error handling | **Low** | No concurrency rule for `RiskBandConfiguration` edits |
-| SR-018 | Missing error handling | **Low** | No behavior specified for failed `prisma migrate deploy` |
-| SR-019 | Missing security requirement | **Medium** | No password policy or session timeout policy specified |
-| SR-020 | Missing DB relationship | **High** | ERD diagram missing three relationships present in the entity tables |
-| SR-021 | Missing workflow transition | **Medium** | ADMIN "Override and Close" scope vs. Reviewer-approval override ambiguous |
-| SR-022 | Missing workflow transition | **Medium** | Investigator reassignment not checked against Review-lock rule |
-| SR-023 | External API dependency | **Low** | CSP guidance hedges on a Google Fonts dependency already ruled out |
+Disposition added at the end of Phase 15 (implementation-plan.md's production-hardening pass),
+which is where its own acceptance criteria require "every finding not already closed by an earlier
+phase is either resolved here or explicitly deferred with a documented reason." Cross-references
+point to the file/phase that actually closed each one.
+
+| ID | Category | Priority | One-line description | Disposition |
+|---|---|---|---|---|
+| SR-001 | Contradiction / Unimplementable | **Critical** | FR-023/FR-055 specify `LocalDiskStorageProvider`, which does not work on Vercel | **Resolved** — Phase 6, `PostgresBlobStorageProvider` (`Bytes` column) |
+| SR-002 | Unimplementable / Missing field | **Critical** | `Attachment` entity missing the `Bytes` column the architecture requires | **Resolved** — Phase 6, `data-model.md` §3.10/`prisma/schema.prisma` |
+| SR-003 | Contradiction | **High** | `functional-requirements.md` still uses the retired 5-state model/entity names | **Resolved** — Phase 10 for Modules 21–22; Phase 15 closed the two remaining instances in Modules 23–24 (FR-056/058/060) |
+| SR-004 | Contradiction / Duplicate | **High** | FR-066's outcome-severity enum still lists retired value `Hazardous` | **Resolved** — Phase 5 |
+| SR-005 | Contradiction | **Medium** | FR-030 references retired unified `Action.hazardId` | **Resolved** — Phase 7 |
+| SR-006 | Contradiction | **Medium** | FR-062/FR-063 cite non-existent `report-spec.md` §3.18/§3.19 | **Resolved** — Phase 10 |
+| SR-007 | Contradiction | **Medium** | Seven files carry a stale "report-spec.md not updated" note | **Resolved** — `data-model.md` earlier; Phase 15 closed the one remaining copy (`ui-spec.md` Appendix B) |
+| SR-008 | Missing requirement / Feature gap | **High** | Investigation Findings has no functional requirements | **Resolved** — Phase 10, FR-072–FR-074 |
+| SR-009 | Missing requirement | **Medium** | Six Assistance Engine capabilities have no FRs | **Resolved** — Phase 11, FR-075–FR-080 |
+| SR-010 | Missing DB relationship | **High** | `LoginAttempt`/`UploadAttempt` referenced but never modeled | **Resolved** — Phase 2, `data-model.md` §3.25 |
+| SR-011 | Ambiguous / Feature gap | **Medium** | "Continue as Viewer" mechanism unreconciled with session-based auth | **Resolved** — Phase 3, signs in as the seeded Guest Viewer account |
+| SR-012 | Ambiguous | **Medium** | "Reporter" field resolved two different ways in two files | **Resolved** — Phase 4 |
+| SR-013 | Ambiguous | **Low** | Reference-number year-rollover behavior only implied | **Resolved** — Phase 4, `ReferenceNumberSequence` |
+| SR-014 | Missing validation | **Medium** | Text field max-lengths not folded back into `data-model.md` | **Resolved** — Phase 6 |
+| SR-015 | Missing validation | **Low** | `RiskBandConfiguration.colorHint` has no format constraint | **Resolved** — Phase 15, `lib/validation/riskBandConfiguration.ts`'s enum |
+| SR-016 | Missing validation / edge case | **Medium** | No handling for assigned Investigator losing role eligibility | **Partially resolved / deferred**: the security boundary is not actually at risk — `requireInvestigationEditAccess` calls `requireRole` first, which always re-reads the *acting* user's current role/`isActive` from the database (technical-architecture.md §4.4's addendum), so a deactivated or role-changed former Investigator cannot act on the investigation regardless of the stale `assignedInvestigatorUserId` value. What remains open is UX/data-hygiene only: no visible flag on the Overview page tells a Manager the assignee needs reassigning (the same gap EC-14 identified for action owners, and — found during this pass — EC-14's own "deactivated owner" UI flag was never actually built either, so there is no existing pattern to replicate here). Deferred as a UI polish item, not a hardening one. |
+| SR-017 | Missing error handling | **Low** | No concurrency rule for `RiskBandConfiguration` edits | **Resolved** — Phase 15, documented as plain last-write-wins with no conflict check (`non-functional-requirements.md` §11), matching the code's existing delete-all-and-recreate transaction |
+| SR-018 | Missing error handling | **Low** | No behavior specified for failed `prisma migrate deploy` | **Resolved** — Phase 15, documented in `non-functional-requirements.md` NFR-5.3/NFR-8.4 (explicit release step, never automatic at startup; a failed migration never promotes the deployment) |
+| SR-019 | Missing security requirement | **Medium** | No password policy or session timeout policy specified | **Resolved** — Phase 15: 8-hour absolute session `maxAge` (`lib/auth/index.ts`) and a 12-character seeded-password floor, both documented in `security-spec.md` §5 |
+| SR-020 | Missing DB relationship | **High** | ERD diagram missing three relationships present in the entity tables | **Resolved** — Phase 2 |
+| SR-021 | Missing workflow transition | **Medium** | ADMIN "Override and Close" scope vs. Reviewer-approval override ambiguous | **Resolved** — Phase 10, FR-051/FR-053a |
+| SR-022 | Missing workflow transition | **Medium** | Investigator reassignment not checked against Review-lock rule | **Resolved** — Phase 10, FR-006 (reassignment explicitly permitted during Review) |
+| SR-023 | External API dependency | **Low** | CSP guidance hedges on a Google Fonts dependency already ruled out | **Resolved** — Phase 5, `next.config.ts`'s CSP has no font-CDN origin at all (self-hosted `next/font` only) |
 
 ## 5. Recommended Remediation Order
 

@@ -528,21 +528,22 @@ per-run Neon branch strategy those scenarios run against.
 ## 15. Consistency Notes — Required Follow-Up Elsewhere
 
 This document was scoped to `technical-architecture.md` only for this pass, per the request, so the
-following files still reflect the **prior, now-superseded** stack assumptions and should be aligned
-in a follow-up pass:
+following files still reflected the **prior, now-superseded** stack assumptions as of that pass —
+**all resolved by later passes, tracked here for history**:
 
 - `product-spec.md` **A1** (React+Vite), **A2** (Node.js+Express), **A3** (SQLite/`better-sqlite3`),
-  and **A9** (single-container Docker deployment) are all superseded by §1 of this document
-  (Next.js/Postgres-via-Neon/Vercel, no Docker) and should be updated to reference this file rather
-  than restating a conflicting stack.
-- `data-model.md` §1 ("Target RDBMS... SQLite") and §3.10/§6.10 (`DATA_DIR/attachments`, local disk)
-  are superseded by §5 and §9 of this document respectively (Postgres via Prisma; `Bytes`-column
-  storage instead of local disk) — §9's `PostgresBlobStorageProvider` is a **required** correction,
-  not an optional one, since the local-disk design does not function on the mandated deployment
-  target.
-- `non-functional-requirements.md`'s references to "the container," `DATA_DIR`, and SQLite-specific
-  language throughout §2 and §8 should be revised to match this document's serverless/Postgres
-  architecture.
+  **A6** (local-disk attachments), and **A9** (single-container Docker deployment), plus its §10/§13
+  prose — **resolved** (Phase 15, implementation-plan.md): all updated to reference this document's
+  §1 stack (Next.js/Postgres-via-Neon/Vercel, no Docker) rather than restating a conflicting one.
+- `data-model.md` §1 ("Target RDBMS... SQLite") and §3.10/§6.10 (`DATA_DIR`/local-disk attachments)
+  — **resolved earlier**, by Phase 2's own addendum (see that document's final addendum note) and
+  its already-Postgres-native §6.10/§6.11 storage design (`PostgresBlobStorageProvider`) — this
+  entry was accurate when written but became stale itself once Phase 2 landed; corrected here so a
+  future reader isn't sent chasing an already-fixed file.
+- `non-functional-requirements.md`'s references to "the container," `DATA_DIR`, SQLite, Express, and
+  Docker throughout §1–§2, §5, §8–§9, and §11 — **resolved** (Phase 15) — each requirement is now
+  marked superseded in place with a pointer to this document, rather than silently rewritten, so the
+  original assumption stays visible for history.
 - `report-spec.md` §2 and `ui-spec.md` do not name a specific stack and require no changes as a
   result of this document.
 

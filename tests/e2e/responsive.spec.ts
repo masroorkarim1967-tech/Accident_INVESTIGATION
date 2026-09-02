@@ -100,6 +100,12 @@ test.describe("Responsive UI (TS-042-045)", () => {
   test("no page in ui-spec.md's page list produces horizontal scroll of the page body at 375/768/1024/1440px (TS-045)", async ({
     page,
   }) => {
+    // 4 viewports x 5 paths = 20 full navigations in one test, several to
+    // the heaviest page in the app (Investigation Detail runs 4 queries
+    // in parallel) — comfortably past a single 30s budget under real
+    // network latency, independent of the config-level per-navigation
+    // timeout.
+    test.slow();
     await login(page);
     const id = await createInvestigation(page, `TEST-FIXTURE-responsive-${Date.now()}`);
     const paths = ["/dashboard", "/investigations", "/action-tracker", `/investigations/${id}`, `/investigations/${id}/occurrence`];

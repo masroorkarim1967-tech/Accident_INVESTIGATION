@@ -21,7 +21,13 @@ import { AccountInactiveError, RateLimitedError } from "@/lib/auth/credentialsEr
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   adapter: PrismaAdapter(db),
-  session: { strategy: "jwt" },
+  // security-spec.md §5 (closing spec-review.md SR-019): an explicit
+  // 8-hour absolute session lifetime — a demo/portfolio session should
+  // not remain valid indefinitely. Auth.js's default `updateAge` (24h,
+  // left unset here) governs *rolling* re-issuance, but since it's longer
+  // than this 8h maxAge, a session always hits its absolute cap first —
+  // effectively an absolute lifetime, not a rolling idle timeout.
+  session: { strategy: "jwt", maxAge: 60 * 60 * 8 },
   providers: [
     Credentials({
       credentials: {

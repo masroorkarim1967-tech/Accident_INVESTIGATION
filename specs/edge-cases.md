@@ -292,6 +292,20 @@ cross-cutting rule) — a network interruption mid-operation can never leave the
 partially-written, inconsistent state; the operation either fully committed before the interruption
 or did not happen at all.
 
+**Documented exception, found during the Phase 15 hardening audit**: `checkAndAdvanceStage`
+(`lib/services/stageTransition.ts`), which runs after roughly a dozen different save actions
+(Occurrence/Aircraft/Flight/Location/Person/Evidence/Witness saves, `assignInvestigatorAction`) to
+auto-advance the investigation's stage, is called as its own separate statement after the
+preceding save's transaction has already committed, not inside it — a crash in the narrow window
+between the two would leave the row saved but the stage not yet advanced. This is accepted rather
+than fixed by threading a shared transaction handle through every call site (a wider refactor
+than this pass's scope), because the failure mode is self-healing, not data corruption: the gate
+check re-runs, with identical results, on every subsequent qualifying save anywhere in the
+investigation, so a stage that fails to auto-advance here simply advances on the next one instead
+— the underlying data was never at risk, only the timing of one derived `status` field. Every
+*other* multi-row write in `lib/actions/**` was audited against this same criterion and found
+correctly wrapped in `db.$transaction`.
+
 ### EC-19 — Database Failure **[Extended]**
 
 **Scenario**: The Postgres database (Neon) is unreachable or returns an error.

@@ -829,13 +829,12 @@ expanded action field set (Department, Verification Method, Effectiveness Result
 Closure) with a portfolio-wide Action Tracker page, and (this pass) the redesigned evidence
 management system (10-category taxonomy, Source/Relevance/Reliability, Related Finding, simulated
 attachments) — all in `data-model.md`. The `product-spec.md` §11.1 stale field reference has also
-been corrected (now `Occurrence.wasSuggestionAccepted`). Still outstanding:
+been corrected (now `Occurrence.wasSuggestionAccepted`).
 
-- `functional-requirements.md` still uses the old 5-state status names (`OPEN`, `UNDER_REVIEW`,
-  `CHANGES_REQUESTED`) in a few places (notably §0.3, FR-011, FR-049–FR-054).
-- `report-spec.md` has not yet been updated to describe the new Findings section, the combined
-  `InvestigationHistory`/`InvestigationReview` timeline, the classification/risk fields
-  (actual/potential outcome, risk, priority, Initial/Residual hazard risk), the enriched Root Cause
-  fields (Supporting Evidence, Investigator Notes, Confidence Level), the expanded action fields
-  (Department, Verification Method, Effectiveness Result), or the evidence fields (Source,
-  Relevance, Reliability Assessment, Related Finding) from the last five revisions.
+**Resolved since this note was written** (Phase 15, closing spec-review.md SR-007's copy of this
+finding for this file): `functional-requirements.md`'s old 5-state status names were rewritten to
+the 6-state model in Phase 10 for Modules 21–22 (§0.3's own note confirms this) and, found still
+stale in Modules 23–24 (FR-056/FR-058/FR-060's own examples) during this pass, corrected here too.
+`report-spec.md` was fully rewritten (its own revision note says so) to cover the Findings section,
+the classification/risk fields, the enriched Root Cause fields, the expanded action fields, and the
+evidence fields this note originally flagged as missing — nothing here is still outstanding.

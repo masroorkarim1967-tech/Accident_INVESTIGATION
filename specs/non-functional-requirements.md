@@ -4,25 +4,32 @@
 
 - **NFR-1.1** The application shall require no external API keys of any kind (no LLM providers, no
   weather APIs, no mapping APIs, no third-party auth providers).
-- **NFR-1.2** The application shall run entirely against local/static application data and a local
-  database (SQLite, embedded — see assumption A3).
+- **NFR-1.2** *(superseded by `technical-architecture.md` §5.1 — see the note at the end of this
+  document)* The application shall run entirely against a free-tier, zero-additional-credential
+  database service (Postgres via Neon) rather than local/static application data, satisfying the
+  same "no paid/managed dependency" spirit assumption A3 originally stated for a local SQLite file.
 - **NFR-1.3** All aviation incident data shall be simulated/fictional (assumption A8); no real
   registries, real people, or real airline names.
-- **NFR-1.4** The application shall be deployable to the public internet as a standard containerized
-  web service, with no dependency on a paid/managed external service to function.
+- **NFR-1.4** *(superseded — see note)* The application shall be deployable to the public internet
+  with no dependency on a paid external service to function; deployment is to Vercel (zero-config
+  for this stack) rather than a self-managed container.
 
 ## 2. Architecture
 
-- **NFR-2.1** Frontend: React + TypeScript, built as a static SPA bundle (assumption A1).
-- **NFR-2.2** Backend: Node.js + Express + TypeScript, exposing a REST JSON API consumed by the
-  frontend (assumption A2).
-- **NFR-2.3** Database: SQLite via an embedded driver (`better-sqlite3`), with schema managed through
-  versioned migrations checked into the repo.
-- **NFR-2.4** The backend shall serve the built frontend bundle directly in production, so the whole
-  application runs as a single deployable process/container (simplifies public deployment — no CORS
-  configuration, single port).
-- **NFR-2.5** File attachments (evidence) shall be stored on the local filesystem under a configurable
-  data directory, separate from the SQLite file, both included in backup/volume guidance.
+- **NFR-2.1** *(superseded — see note)* Frontend: React + TypeScript, server-rendered and
+  hydrated by Next.js (App Router) rather than built as a standalone static SPA bundle.
+- **NFR-2.2** *(superseded — see note)* Backend: Next.js Server Actions and Route Handlers,
+  TypeScript, running in the same process as the frontend — no separate Express/REST API service.
+- **NFR-2.3** *(superseded — see note)* Database: PostgreSQL (Neon, serverless), accessed via
+  Prisma, with schema managed through versioned migrations checked into the repo.
+- **NFR-2.4** The application shall run as a single deployable Next.js project with no separate
+  frontend/backend deployment step (simplifies public deployment — no CORS configuration, one
+  Vercel project).
+- **NFR-2.5** *(superseded — see note)* File attachments (evidence) shall be stored as `Bytes`
+  columns in Postgres via a `StorageProvider` abstraction (`data-model.md` §6.10.1,
+  `technical-architecture.md` §9) rather than on a local filesystem — Vercel's serverless
+  filesystem cannot durably persist an uploaded file across invocations, so local-disk storage was
+  never a viable option for the mandated deployment target.
 
 ## 3. Performance
 
@@ -60,10 +67,15 @@
 - **NFR-5.1** Referential integrity between incident sub-records (aircraft, flight info, persons,
   evidence, actions, etc.) shall be enforced via foreign keys with cascade delete scoped to a single
   incident.
-- **NFR-5.2** The SQLite database file shall be included in the documented backup procedure (simple
-  file copy) since there is no external managed database.
-- **NFR-5.3** Schema changes shall go through migrations; the app shall run pending migrations
-  automatically at startup so a fresh deployment initializes correctly.
+- **NFR-5.2** *(superseded — see note)* Backup/recovery is Neon's own point-in-time recovery
+  (included on its free tier, `technical-architecture.md` §5.1/§7) rather than a documented
+  file-copy procedure — there is no local database file to back up.
+- **NFR-5.3** *(corrected to match `security-spec.md` §16, which supersedes this)* Schema changes
+  shall go through versioned migrations, applied via an explicit `prisma migrate deploy` release
+  step before a deployment is promoted — never automatically at application startup. Running
+  migrations implicitly on every cold start would apply a schema change as an incidental side
+  effect of an unrelated deploy, exactly what `security-spec.md` §16 and spec-review.md SR-018
+  require avoiding.
 
 ## 6. Usability & Accessibility
 
@@ -83,24 +95,28 @@
 
 ## 8. Deployability & Operations
 
-- **NFR-8.1** The application shall build and run via a single `Dockerfile` producing one image
-  containing both API and static frontend.
-- **NFR-8.2** All runtime configuration shall be via environment variables with sane defaults (e.g.
-  `PORT`, `SESSION_SECRET`, `DATA_DIR`); none shall be a third-party API key.
-- **NFR-8.3** The application shall expose a lightweight `/health` endpoint for uptime checks by the
-  hosting platform.
-- **NFR-8.4** Startup shall auto-run migrations and, on a genuinely empty database, auto-seed the
-  fictional demo dataset (idempotent — will not duplicate seed data on restart).
+- **NFR-8.1** *(superseded — see note)* The application shall build and deploy as a single Next.js
+  project to Vercel — no `Dockerfile`/container image; Vercel builds and runs the Next.js
+  application directly.
+- **NFR-8.2** All runtime configuration shall be via environment variables with sane defaults where
+  one is meaningful (`security-spec.md` §8's list — `DATABASE_URL`, `DIRECT_URL`, `NEXTAUTH_SECRET`,
+  `NEXTAUTH_URL`, `NODE_ENV`); none shall be a third-party API key.
+- **NFR-8.3** The application shall expose a lightweight `/api/health` endpoint for uptime checks by
+  the hosting platform.
+- **NFR-8.4** *(corrected to match NFR-5.3/`security-spec.md` §16)* Migrations are applied as an
+  explicit `prisma migrate deploy` release step, never automatically at startup; on a genuinely empty
+  database, `prisma db seed` populates the fictional demo dataset as its own explicit step
+  (idempotent — upsert-by-email/unique-key, so it will not duplicate seed data if run again).
 
 ## 9. Maintainability
 
 - **NFR-9.1** Backend and frontend code shall be written in TypeScript with strict type checking
   enabled.
-- **NFR-9.2** The codebase shall include automated tests: unit tests for backend business logic
-  (classification suggestion, risk matrix, status transitions) and at least smoke-level integration
-  tests for the REST API.
-- **NFR-9.3** Linting/formatting (ESLint + Prettier) shall be configured and enforced in CI (if/when
-  CI is added) or at minimum via a documented local command.
+- **NFR-9.2** The codebase shall include automated tests: unit tests for service-layer business
+  logic (classification suggestion, risk matrix, status transitions) and integration tests for
+  Server Actions/Route Handlers (`technical-architecture.md` §12, `testing-spec.md`).
+- **NFR-9.3** *(corrected — Prettier was never adopted)* Linting (ESLint) shall be configured and
+  enforced in CI, per `.github/workflows/ci.yml`.
 
 ## 10. Observability
 
@@ -111,7 +127,22 @@
 
 ## 11. Explicit Non-Goals (tie-back to product-spec §4.2)
 
-- No horizontal scaling / multi-instance session sharing (SQLite is single-writer; acceptable for a
-  portfolio-scale demo).
+- No horizontal-scaling concerns beyond what Vercel's serverless model already handles
+  transparently (superseded — the original "SQLite is single-writer" rationale no longer applies
+  now that the database is Postgres via Neon, which supports concurrent connections/writers
+  natively; the non-goal itself — no custom multi-instance session-sharing infrastructure — still
+  holds, just for a different, simpler reason: there is nothing bespoke to build).
 - No real-time multi-user concurrent editing conflict resolution beyond "last write wins" with an
-  `updatedAt` optimistic check that surfaces a conflict message.
+  `updatedAt` optimistic check that surfaces a conflict message, for per-investigation edits.
+  **`RiskBandConfiguration`** (a global, non-investigation-scoped table, FR-069) is explicitly
+  simpler still: plain last-write-wins with **no** conflict check at all — acceptable given how
+  rarely an Administrator edits it, and a stated decision rather than a silent gap
+  (spec-review.md SR-017).
+
+---
+
+**Consistency note**: NFR-1.2, NFR-1.4, NFR-2.1–NFR-2.3, NFR-2.5, NFR-5.2, NFR-8.1 above were
+written against the project's original stack assumption (React+Vite SPA / Node.js+Express /
+SQLite / Docker, `product-spec.md` A1–A3, A9) and are corrected here to match
+`technical-architecture.md` §1, which is the authoritative stack decision — see that document's
+§15 for the full list of files this same correction was flagged against.

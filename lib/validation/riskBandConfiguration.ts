@@ -1,5 +1,16 @@
 import { z } from "zod";
 
+/**
+ * data-model.md §6.4's example set, and the only tokens the shared badge
+ * components (RiskGrid.tsx's COLOR_HINT_CLASSES, RiskBandEditor.tsx's
+ * COLOR_SWATCH_CLASSES) actually implement rendering for — closes
+ * spec-review.md SR-015 (a `colorHint` outside this set had no defined
+ * rendering, and nothing previously stopped a crafted request from
+ * bypassing the UI's own <select> and submitting one).
+ */
+export const RISK_BAND_COLOR_HINTS = ["green", "amber", "orange", "red"] as const;
+export type RiskBandColorHint = (typeof RISK_BAND_COLOR_HINTS)[number];
+
 /** FR-069 — one editable row of the risk-band matrix. `id` is absent for a newly-added row. */
 export const riskBandRowSchema = z
   .object({
@@ -7,7 +18,7 @@ export const riskBandRowSchema = z
     minScore: z.coerce.number().int().min(1, "Min Score must be at least 1.").max(25, "Min Score cannot exceed 25."),
     maxScore: z.coerce.number().int().min(1, "Max Score must be at least 1.").max(25, "Max Score cannot exceed 25."),
     bandLabel: z.string().trim().min(1, "Band Label is required.").max(20, "Band Label must be 20 characters or fewer."),
-    colorHint: z.string().trim().max(20).optional().or(z.literal("")),
+    colorHint: z.enum(RISK_BAND_COLOR_HINTS, { message: "Color must be one of: green, amber, orange, red." }).optional().or(z.literal("")),
     displayOrder: z.coerce.number().int(),
     isActive: z.boolean(),
   })
