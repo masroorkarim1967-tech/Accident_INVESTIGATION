@@ -5,6 +5,7 @@ import { getInvestigationDetail, listActiveInvestigators } from "@/lib/services/
 import { SectionStepper } from "@/components/investigations/SectionStepper";
 import { StageBadge } from "@/components/ui/StageBadge";
 import { AssignInvestigatorForm } from "@/components/investigations/AssignInvestigatorForm";
+import { DeleteDraftButton } from "@/components/investigations/DeleteDraftButton";
 import { AdvisoryBanner } from "@/components/support/AdvisoryBanner";
 import { CompletenessScoreGauge } from "@/components/support/CompletenessScoreGauge";
 import {
@@ -54,7 +55,7 @@ export default async function InvestigationDetailPage({
   ]);
 
   return (
-    <div className="flex">
+    <div className="flex flex-col md:flex-row">
       <SectionStepper
         investigationId={investigation.id}
         occurrenceCompleteness={investigation.occurrence?.narrativeDescription ? "in-progress" : "not-started"}
@@ -88,9 +89,14 @@ export default async function InvestigationDetailPage({
         <p className="font-mono text-xs text-muted">
           Investigations / {investigation.referenceNumber}
         </p>
-        <div className="mt-2 flex items-center gap-3">
-          <h1 className="text-xl font-semibold text-foreground">{investigation.title}</h1>
-          <StageBadge status={investigation.status} />
+        <div className="mt-2 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <h1 className="text-xl font-semibold text-foreground">{investigation.title}</h1>
+            <StageBadge status={investigation.status} />
+          </div>
+          {currentUser.role === UserRole.Administrator && investigation.status === "Draft" && (
+            <DeleteDraftButton investigationId={investigation.id} />
+          )}
         </div>
 
         <div className="mt-3 flex gap-2 border-b border-border">

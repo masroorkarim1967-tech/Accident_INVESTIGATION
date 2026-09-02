@@ -8,7 +8,7 @@ import { generateReferenceNumber } from "@/lib/services/referenceNumber";
 import { logInvestigationHistory } from "@/lib/services/investigationHistory";
 import { checkAndAdvanceStage } from "@/lib/services/stageTransition";
 import { createInvestigationSchema, assignInvestigatorSchema } from "@/lib/validation/investigation";
-import { HistoryEventType, UserRole } from "@/prisma/generated/prisma/client";
+import { HistoryEventType, InvestigationStatus, UserRole } from "@/prisma/generated/prisma/client";
 
 export type CreateInvestigationState = {
   error: string | null;
@@ -172,4 +172,41 @@ export async function assignInvestigatorAction(
   await checkAndAdvanceStage(investigationId, actingUser.id);
 
   return { error: null };
+}
+
+export type DeleteDraftInvestigationState = { error: string | null };
+
+/**
+ * FR-055 — Delete Draft Investigation. Administrator-only, and only while
+ * status is still Draft — past that point, reopening/closing is used
+ * instead of deletion (real investigative work and audit history must
+ * never be destroyed). The cascade (`onDelete: Cascade` throughout
+ * prisma/schema.prisma) removes every child row, including Evidence
+ * `Attachment.fileBytes` (FR-055's edge case, same pattern as FR-022).
+ */
+export async function deleteDraftInvestigationAction(
+  investigationId: number,
+  _prevState: DeleteDraftInvestigationState,
+  _formData: FormData,
+): Promise<DeleteDraftInvestigationState> {
+  try {
+    await requireRole([UserRole.Administrator]);
+  } catch (error) {
+    if (error instanceof AuthorizationError) {
+      return { error: "You are not authorized to delete this investigation." };
+    }
+    throw error;
+  }
+
+  const investigation = await db.investigation.findUnique({ where: { id: investigationId } });
+  if (!investigation) {
+    return { error: "Investigation not found." };
+  }
+  if (investigation.status !== InvestigationStatus.Draft) {
+    return { error: "Only a Draft investigation can be deleted." };
+  }
+
+  await db.investigation.delete({ where: { id: investigationId } });
+
+  redirect("/investigations");
 }

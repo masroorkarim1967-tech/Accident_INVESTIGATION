@@ -48,8 +48,14 @@ export function RiskGrid({
   residual: RiskGridPoint | null;
 }) {
   return (
-    <div className="rounded border border-border bg-background p-3">
-      <div className="grid grid-cols-[auto_repeat(5,1fr)] gap-1">
+    <div
+      className="overflow-x-auto rounded border border-border bg-background p-3"
+      data-testid="risk-matrix-grid"
+      tabIndex={0}
+      role="group"
+      aria-label="Risk matrix, likelihood by severity"
+    >
+      <div className="grid min-w-[280px] grid-cols-[auto_repeat(5,1fr)] gap-1">
         <div />
         {SEVERITY_ORDER.map((severity, i) => (
           <div key={severity} className="text-center text-[10px] text-muted">

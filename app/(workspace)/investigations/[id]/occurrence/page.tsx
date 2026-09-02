@@ -35,7 +35,7 @@ export default async function OccurrencePage({ params }: { params: Promise<{ id:
   const riskWarnings = await getRiskWarnings(investigationId);
 
   return (
-    <div className="flex">
+    <div className="flex flex-col md:flex-row">
       <SectionStepper
         investigationId={investigation.id}
         occurrenceCompleteness={occurrence.narrativeDescription ? "in-progress" : "not-started"}

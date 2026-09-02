@@ -203,7 +203,7 @@ describe.skipIf(!process.env.DATABASE_URL)("Automatic Stage Transitions (investi
     });
     expect(historyRow.fromStatus).toBe("UnderInvestigation");
     expect(historyRow.performedByUserId).toBe(investigator.id);
-  });
+  }, 20000); // 7 sequential Server Action round-trips over a real network connection — past Vitest's 5s default.
 
   it("Analysis never auto-advances to Review — that transition is manual only (FR-049)", async () => {
     const investigator = await db.user.findUniqueOrThrow({ where: { email: "r.okafor@investigations.example" } });
@@ -222,5 +222,49 @@ describe.skipIf(!process.env.DATABASE_URL)("Automatic Stage Transitions (investi
     const { checkAndAdvanceStage } = await import("@/lib/services/stageTransition");
     await checkAndAdvanceStage(investigation.id, investigator.id);
     expect(await status(investigation.id)).toBe("Analysis");
+  });
+
+  it("never skips a stage — advancing from Draft moves to Open only, even when the NEXT gate is also already satisfied (negative, TS-002)", async () => {
+    const investigator = await db.user.findUniqueOrThrow({ where: { email: "r.okafor@investigations.example" } });
+    const subcategory = await db.occurrenceSubcategoryOption.findFirstOrThrow({ where: { category: "AircraftIncident" } });
+
+    // Deliberately over-populated: satisfies both Draft->Open's gate AND
+    // Open->UnderInvestigation's gate (Classification + Outcome fields) up
+    // front, per investigation-workflow.md §7.1's "no forward skipping"
+    // rule — a single checkAndAdvanceStage call must still land on exactly
+    // Open, never jump straight to UnderInvestigation.
+    const investigation = await db.investigation.create({
+      data: {
+        referenceNumber: `INC-TEST-${Math.random().toString(36).slice(2, 10)}`,
+        title: "TEST-FIXTURE-stage-no-skip",
+        status: "Draft",
+        reporterName: "Test Reporter",
+        createdByUserId: investigator.id,
+        assignedInvestigatorUserId: investigator.id,
+        occurrence: {
+          create: {
+            occurrenceDateUtc: new Date("2026-03-15"),
+            occurrenceTimeUtc: new Date("2026-03-15T12:00:00Z"),
+            phaseOfFlight: "Landing",
+            briefDescription: "Fixture brief description.",
+            narrativeDescription: "Fixture narrative description.",
+            occurrenceCategory: "AircraftIncident",
+            occurrenceSubcategoryId: subcategory.id,
+            actualOutcomeSeverity: "Minor",
+            potentialOutcomeSeverity: "Major",
+            likelihoodOfRecurrence: "Possible",
+          },
+        },
+      },
+    });
+
+    const { checkAndAdvanceStage } = await import("@/lib/services/stageTransition");
+    await checkAndAdvanceStage(investigation.id, investigator.id);
+    expect(await status(investigation.id)).toBe("Open");
+
+    // Confirms exactly one StageAdvanced event fired (Draft->Open), not two.
+    const events = await db.investigationHistory.findMany({ where: { investigationId: investigation.id, eventType: "StageAdvanced" } });
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({ fromStatus: "Draft", toStatus: "Open" });
   });
 });

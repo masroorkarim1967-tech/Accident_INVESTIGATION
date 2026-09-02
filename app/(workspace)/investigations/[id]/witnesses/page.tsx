@@ -26,7 +26,7 @@ export default async function WitnessesPage({ params }: { params: Promise<{ id: 
   const isReadOnly = investigation.status === "Review" || investigation.status === "Closed";
 
   return (
-    <div className="flex">
+    <div className="flex flex-col md:flex-row">
       <SectionStepper
         investigationId={investigation.id}
         witnessesCompleteness={witnesses.length > 0 || occurrence.noWitnessesConfirmed ? "complete" : "not-started"}

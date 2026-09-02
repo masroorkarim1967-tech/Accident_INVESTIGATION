@@ -66,7 +66,7 @@ export default async function RootCausesPage({
   const isReadOnly = investigation.status === "Review" || investigation.status === "Closed";
 
   return (
-    <div className="flex">
+    <div className="flex flex-col md:flex-row">
       <SectionStepper
         investigationId={investigation.id}
         rootCauseCompleteness={rootCauses.length > 0 ? "complete" : "not-started"}

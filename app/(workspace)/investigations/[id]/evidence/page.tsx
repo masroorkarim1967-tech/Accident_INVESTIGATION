@@ -42,7 +42,7 @@ export default async function EvidencePage({ params }: { params: Promise<{ id: s
   const isReadOnly = investigation.status === "Review" || investigation.status === "Closed";
 
   return (
-    <div className="flex">
+    <div className="flex flex-col md:flex-row">
       <SectionStepper
         investigationId={investigation.id}
         evidenceCompleteness={evidence.length > 0 || occurrence.noEvidenceAvailableConfirmed ? "complete" : "not-started"}

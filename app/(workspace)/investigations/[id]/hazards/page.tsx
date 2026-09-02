@@ -36,7 +36,7 @@ export default async function HazardsPage({ params }: { params: Promise<{ id: st
   const riskWarnings = await getRiskWarnings(investigationId);
 
   return (
-    <div className="flex">
+    <div className="flex flex-col md:flex-row">
       <SectionStepper
         investigationId={investigation.id}
         hazardsCompleteness={hazards.length > 0 ? "complete" : "not-started"}

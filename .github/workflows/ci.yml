@@ -1,0 +1,140 @@
+name: CI
+
+# testing-spec.md §5 — coverage targets and CI gates. Static checks and
+# the DB-free test categories (unit, validation, risk calculation,
+# assistance-engine) always run; the DB-backed categories (integration,
+# database, workflow, report-generation, security) run against a fresh
+# ephemeral Neon branch created for this run only, per
+# technical-architecture.md §12; E2E (responsive UI, accessibility) runs
+# against a local production build. Every job here blocks merge on
+# failure (branch protection is a repository setting, not something this
+# file can itself enforce — see the required-secrets note below).
+#
+# Required repository secrets:
+#   NEON_API_KEY      - a Neon API key with branch-create permission on
+#                        the project used for CI (https://console.neon.tech,
+#                        Account Settings -> API Keys)
+#   NEON_PROJECT_ID   - the Neon project ID that owns the branch CI forks
+#                        from (visible in the Neon console URL/Settings)
+#   NEXTAUTH_SECRET   - any random string; used only for this run's JWT
+#                        signing, does not need to match production
+# Without these three secrets set, the `test-db` and `e2e` jobs below
+# will fail at the "Create Neon branch" / migrate step — `static-checks`
+# still runs and blocks merge on typecheck/lint/DB-free-test failures on
+# its own.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  static-checks:
+    name: Typecheck, lint, DB-free tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      # Categories 1, 4, 6, 7 (unit, form validation, risk calculation,
+      # assistance-engine) never touch the database — the
+      # describe.skipIf(!process.env.DATABASE_URL) guard in
+      # tests/integration/** means this run (no DATABASE_URL set) already
+      # only exercises tests/unit/** and tests/component/**.
+      - run: npm test
+
+  test-db:
+    name: Integration/database/workflow/report/security tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      - name: Create Neon branch
+        id: neon-branch
+        uses: neondatabase/create-branch-action@v6
+        with:
+          project_id: ${{ secrets.NEON_PROJECT_ID }}
+          api_key: ${{ secrets.NEON_API_KEY }}
+          branch_name: ci-${{ github.run_id }}
+
+      - name: Migrate + seed the ephemeral branch
+        env:
+          DATABASE_URL: ${{ steps.neon-branch.outputs.db_url_pooled }}
+          DIRECT_URL: ${{ steps.neon-branch.outputs.db_url }}
+        run: |
+          npx prisma migrate deploy
+          npx prisma db seed
+
+      - name: Run DB-backed tests
+        env:
+          DATABASE_URL: ${{ steps.neon-branch.outputs.db_url_pooled }}
+          DIRECT_URL: ${{ steps.neon-branch.outputs.db_url }}
+        run: npm run test:coverage
+
+      - name: Delete Neon branch
+        if: always()
+        uses: neondatabase/delete-branch-action@v3
+        with:
+          project_id: ${{ secrets.NEON_PROJECT_ID }}
+          branch_id: ${{ steps.neon-branch.outputs.branch_id }}
+          api_key: ${{ secrets.NEON_API_KEY }}
+
+  e2e:
+    name: Responsive UI + Accessibility (Playwright)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+
+      - name: Create Neon branch
+        id: neon-branch
+        uses: neondatabase/create-branch-action@v6
+        with:
+          project_id: ${{ secrets.NEON_PROJECT_ID }}
+          api_key: ${{ secrets.NEON_API_KEY }}
+          branch_name: ci-e2e-${{ github.run_id }}
+
+      - name: Migrate + seed the ephemeral branch
+        env:
+          DATABASE_URL: ${{ steps.neon-branch.outputs.db_url_pooled }}
+          DIRECT_URL: ${{ steps.neon-branch.outputs.db_url }}
+        run: |
+          npx prisma migrate deploy
+          npx prisma db seed
+
+      - name: Build and start the app
+        env:
+          DATABASE_URL: ${{ steps.neon-branch.outputs.db_url_pooled }}
+          DIRECT_URL: ${{ steps.neon-branch.outputs.db_url }}
+          NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+          NEXTAUTH_URL: http://localhost:3000
+        run: |
+          npm run build
+          npm run start &
+          timeout 60 bash -c 'until curl -sf http://localhost:3000/api/health; do sleep 1; done'
+
+      - name: Run Playwright
+        run: npm run test:e2e
+
+      - name: Delete Neon branch
+        if: always()
+        uses: neondatabase/delete-branch-action@v3
+        with:
+          project_id: ${{ secrets.NEON_PROJECT_ID }}
+          branch_id: ${{ steps.neon-branch.outputs.branch_id }}
+          api_key: ${{ secrets.NEON_API_KEY }}

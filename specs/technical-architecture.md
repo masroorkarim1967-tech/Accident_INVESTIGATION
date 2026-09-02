@@ -443,6 +443,11 @@ paid APIs" constraints (§2).
 
 ## 12. Testing Architecture
 
+The concrete scenario catalog (54 numbered TS-### scenarios across 11 categories, acceptance
+criteria per feature area, and the CI-gate/coverage rules) lives in `testing-spec.md`, not here —
+this section only fixes the tooling choices (Vitest/Playwright/GitHub Actions) and the ephemeral-
+per-run Neon branch strategy those scenarios run against.
+
 - **Unit tests (Vitest)**: every service module under `lib/services/` (§4.3) is tested in isolation
   with plain function calls and fixture data — the risk engine's formula and band resolution
   (`data-model.md` §6.3–§6.4), the classification suggestion engine's keyword matching, the

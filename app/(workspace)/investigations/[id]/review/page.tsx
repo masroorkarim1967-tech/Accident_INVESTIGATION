@@ -70,7 +70,7 @@ export default async function ReviewPage({ params }: { params: Promise<{ id: str
   }
 
   return (
-    <div className="flex">
+    <div className="flex flex-col md:flex-row">
       <SectionStepper investigationId={investigation.id} reviewCompleteness={historyEntries.length > 0 ? "in-progress" : "not-started"} />
       <div className="flex-1 p-6">
         <p className="font-mono text-xs text-muted">

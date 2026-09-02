@@ -29,7 +29,7 @@ export default async function ContributingFactorsPage({ params }: { params: Prom
   const isReadOnly = investigation.status === "Review" || investigation.status === "Closed";
 
   return (
-    <div className="flex">
+    <div className="flex flex-col md:flex-row">
       <SectionStepper
         investigationId={investigation.id}
         contributingFactorsCompleteness={factors.length > 0 ? "complete" : "not-started"}

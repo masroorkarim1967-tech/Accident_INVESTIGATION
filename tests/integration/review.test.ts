@@ -101,7 +101,7 @@ describe.skipIf(!process.env.DATABASE_URL)("Investigation Review / Closure (FR-0
     expect((await db.investigation.findUniqueOrThrow({ where: { id: investigation.id } })).status).toBe("Review");
   });
 
-  it("submitForReviewAction is only valid from Analysis status", async () => {
+  it("submitForReviewAction is only valid from Analysis status (negative, TS-023)", async () => {
     const { submitForReviewAction } = await import("@/lib/actions/review");
     const investigator = await db.user.findUniqueOrThrow({ where: { email: "r.okafor@investigations.example" } });
     const investigation = await db.investigation.create({
@@ -117,6 +117,10 @@ describe.skipIf(!process.env.DATABASE_URL)("Investigation Review / Closure (FR-0
     });
     const result = await submitForReviewAction(investigation.id);
     expect(result.error).toMatch(/current status/);
+
+    // No partial side effect — status is untouched, never silently advanced.
+    const reloaded = await db.investigation.findUniqueOrThrow({ where: { id: investigation.id } });
+    expect(reloaded.status).toBe("Open");
   });
 
   it("approveInvestigationAction is blocked while a requiredForClosure action is unresolved, and succeeds once resolved (FR-051)", async () => {

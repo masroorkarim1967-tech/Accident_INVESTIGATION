@@ -26,7 +26,7 @@ export default async function AircraftFlightPage({ params }: { params: Promise<{
   const isReadOnly = investigation.status === "Review" || investigation.status === "Closed";
 
   return (
-    <div className="flex">
+    <div className="flex flex-col md:flex-row">
       <SectionStepper
         investigationId={investigation.id}
         aircraftFlightCompleteness={aircraft || flight || location ? "in-progress" : "not-started"}

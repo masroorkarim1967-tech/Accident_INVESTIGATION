@@ -52,7 +52,7 @@ export default async function FindingsPage({ params }: { params: Promise<{ id: s
   const isReadOnly = investigation.status === "Review" || investigation.status === "Closed";
 
   return (
-    <div className="flex">
+    <div className="flex flex-col md:flex-row">
       <SectionStepper
         investigationId={investigation.id}
         findingsCompleteness={findings.length > 0 ? "complete" : "not-started"}

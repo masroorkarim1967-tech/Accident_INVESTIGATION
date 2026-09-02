@@ -153,7 +153,7 @@ export default async function InvestigationsPage({
               key={page}
               href={pageHref(page)}
               className={`rounded px-3 py-1 text-sm ${
-                page === result.page ? "bg-amber text-background" : "text-muted hover:text-teal"
+                page === result.page ? "bg-amber-fill text-[#0b1220]" : "text-muted hover:text-teal"
               }`}
             >
               {page}

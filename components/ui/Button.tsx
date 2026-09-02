@@ -9,7 +9,12 @@ import { type ButtonHTMLAttributes } from "react";
 type ButtonVariant = "primary" | "secondary" | "ghost" | "destructive";
 
 const VARIANT_CLASSES: Record<ButtonVariant, string> = {
-  primary: "bg-amber text-background border border-amber hover:bg-amber-muted",
+  // bg-amber-fill (not bg-amber, now darkened for AA text contrast — see
+  // globals.css) + fixed dark text (not the theme-dependent
+  // `text-background`, which is near-white in light theme) — a solid
+  // amber fill needs to stay bright with dark text in both themes
+  // (testing-spec.md TS-046/TS-048).
+  primary: "bg-amber-fill text-[#0b1220] border border-amber-fill hover:bg-amber-muted",
   secondary: "bg-transparent text-teal border border-teal hover:bg-teal/10",
   ghost: "bg-transparent text-muted border border-transparent hover:text-foreground",
   destructive: "bg-transparent text-red border border-red hover:bg-red/10",

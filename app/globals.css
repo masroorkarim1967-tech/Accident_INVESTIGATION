@@ -19,21 +19,60 @@
 
   --color-amber: #f5a623;
   --color-amber-muted: #b5791a;
+  /* A solid-fill button/pill needs a bright amber with dark text on top —
+     the opposite constraint from --color-amber-as-text-on-a-light-surface
+     below (which had to darken for AA). Kept constant across both themes
+     on purpose, unlike --color-amber. */
+  --color-amber-fill: #f5a623;
   --color-teal: #2dd4bf;
   --color-green: #22c55e;
   --color-orange: #f97316;
   --color-red: #ef4444;
   --color-blue: #3b82f6;
-  --color-slate: #64748b;
-  --color-violet: #8b5cf6;
+  /* Lightened from slate-500/violet-500 (#64748b/#8b5cf6) — those failed
+     WCAG AA 4.5:1 as small text against this dark theme's surface/
+     background colors (axe-core color-contrast, testing-spec.md TS-046/
+     TS-048, found during the Phase 14 accessibility pass). slate-400/
+     violet-400 clear the ratio comfortably here. */
+  --color-slate: #94a3b8;
+  --color-violet: #a78bfa;
 }
 
-:root[data-theme="light"] {
+/*
+ * Not `:root[data-theme="light"]` — a plain attribute selector, so a
+ * `data-theme="light"` set on any element (not just <html>) opens a new
+ * light-theme custom-property scope for its own subtree. The Report
+ * Preview page (ui-spec.md §1.1's documented exception: always
+ * light/print-styled regardless of the app's active theme) relies on
+ * this — it sets the attribute on its own root wrapper rather than on
+ * <html>, since only that one page/subtree should be forced light.
+ */
+[data-theme="light"] {
   --color-background: #f4f6fb;
   --color-surface: #ffffff;
   --color-border: #d7deea;
   --color-foreground: #101a2c;
   --color-muted: #5b6577;
+  /* The dark-theme slate-400/violet-400 above are too light for AA
+     contrast against this theme's white/near-white surfaces — slate-600/
+     violet-600 restore it here (same TS-046/TS-048 finding). Same issue
+     for teal (#2dd4bf, the primary accent — 1.86:1 on white, nowhere
+     close to 4.5:1) — teal-700 restores it. */
+  --color-slate: #475569;
+  --color-violet: #7c3aed;
+  /* One shade darker than teal-700 — Tailwind's hover:bg-teal/10 overlay
+     composites to a marginally lighter effective background than pure
+     white, tipping teal-700 just under 4.5:1 on hover; teal-800 keeps
+     margin through that state too. Same reasoning for amber-800/red-700
+     below. */
+  --color-teal: #115e56;
+  /* Same finding for amber, red, and blue as small text/borders on this
+     theme's light surfaces (a broader palette audit run after the
+     slate/violet/teal fixes above, same TS-046/TS-048 pass). Their dark-
+     theme values are unchanged — only light theme needed darkening. */
+  --color-amber: #92400e;
+  --color-red: #b91c1c;
+  --color-blue: #1d4ed8;
 }
 
 body {

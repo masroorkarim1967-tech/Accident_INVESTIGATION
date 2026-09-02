@@ -26,7 +26,7 @@ export function AircraftFlightTabs({
 
   return (
     <div>
-      <div className="flex gap-1 border-b border-border" role="tablist">
+      <div className="flex gap-1 overflow-x-auto border-b border-border" role="tablist">
         {TABS.map((tab) => (
           <button
             key={tab}
@@ -34,7 +34,7 @@ export function AircraftFlightTabs({
             role="tab"
             aria-selected={activeTab === tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-3 py-2 text-sm ${
+            className={`flex-shrink-0 whitespace-nowrap px-3 py-2 text-sm ${
               activeTab === tab ? "border-b-2 border-amber text-foreground" : "text-muted hover:text-foreground"
             }`}
           >

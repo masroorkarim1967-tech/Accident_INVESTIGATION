@@ -77,7 +77,7 @@ export default async function ActionsPage({ params }: { params: Promise<{ id: st
   const actionReminders = await getActionReminders(investigationId);
 
   return (
-    <div className="flex">
+    <div className="flex flex-col md:flex-row">
       <SectionStepper
         investigationId={investigation.id}
         actionsCompleteness={correctiveActions.length > 0 || preventiveActions.length > 0 ? "complete" : "not-started"}

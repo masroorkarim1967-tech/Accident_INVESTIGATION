@@ -15,7 +15,7 @@ export interface BarChartDatum {
 export function BarChart({ data }: { data: BarChartDatum[] }) {
   const max = Math.max(1, ...data.map((d) => d.value));
   return (
-    <div className="flex max-h-64 flex-col gap-1.5 overflow-y-auto pr-1">
+    <div className="flex max-h-64 flex-col gap-1.5 overflow-y-auto pr-1" tabIndex={0} role="group" aria-label="Chart data">
       {data.map((d) => (
         <div key={d.label} className="flex items-center gap-2 text-xs">
           <span className="w-32 shrink-0 truncate text-muted" title={d.label}>

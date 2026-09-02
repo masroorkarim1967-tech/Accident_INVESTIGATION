@@ -112,7 +112,7 @@ for the phase each item belongs to.
 | ORM | [Prisma](https://www.prisma.io) 7, native Postgres enums, driver-adapter (`@prisma/adapter-pg`) |
 | Validation | [Zod](https://zod.dev) |
 | Auth | [Auth.js](https://authjs.dev) v5, Credentials provider, JWT sessions with database re-validation |
-| Testing | [Vitest](https://vitest.dev) (unit/integration); [Playwright](https://playwright.dev) planned for E2E |
+| Testing | [Vitest](https://vitest.dev) (unit/integration/coverage); [Playwright](https://playwright.dev) (E2E, responsive UI, accessibility via axe-core) |
 | Hosting (planned) | [Vercel](https://vercel.com) (Hobby tier) |
 
 No dependency in this stack requires an API key, a paid tier, or a call to an external AI/ML

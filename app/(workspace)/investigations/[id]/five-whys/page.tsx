@@ -27,7 +27,7 @@ export default async function FiveWhysPage({ params }: { params: Promise<{ id: s
   const isReadOnly = investigation.status === "Review" || investigation.status === "Closed";
 
   return (
-    <div className="flex">
+    <div className="flex flex-col md:flex-row">
       <SectionStepper
         investigationId={investigation.id}
         fiveWhysCompleteness={analyses.length > 0 ? "complete" : "not-started"}

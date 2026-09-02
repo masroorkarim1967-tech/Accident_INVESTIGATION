@@ -246,7 +246,7 @@ export default async function InvestigationReportPage({ params }: { params: Prom
 
   if (!canViewReport(currentUser, inv.status)) {
     return (
-      <div className="min-h-screen bg-white p-6">
+      <div data-theme="light" className="min-h-screen bg-white p-6">
         <p className="text-sm text-slate-600">
           The report for this investigation becomes available to Viewer accounts once the investigation is Closed.
         </p>
@@ -263,7 +263,7 @@ export default async function InvestigationReportPage({ params }: { params: Prom
   );
 
   return (
-    <div className="min-h-screen bg-white text-slate-900">
+    <div data-theme="light" className="min-h-screen bg-white text-slate-900">
       <ReportToolbar investigationId={inv.id} />
 
       <style>{`
