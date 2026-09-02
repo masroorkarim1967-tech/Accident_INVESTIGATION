@@ -236,9 +236,11 @@ Defined once here; page sections below reference these by name rather than re-de
     uses the RiskBadge "High" color; Overdue Corrective Actions uses the OverdueBadge red.
   - **ChartCard ×6**: Investigations by Status (donut, all 6 stage colors), Investigations by
     Occurrence Category (bar, includes an "Unclassified" segment), Incidents by Location (ranked
-    horizontal bar — **not a map**; see note below), Contributing-Factor Distribution (bar, all 5
-    categories always shown), Corrective-Action Status (stacked/grouped bar: Completed, Cancelled,
-    Overdue, Open, In Progress), Monthly Investigation Trend (line, 12 months, zero-filled).
+    horizontal bar — **not a map**; see note below), Contributing-Factor Distribution (bar, all 10
+    categories always shown — `data-model.md` §6.7), Corrective-Action Status (stacked/grouped bar:
+    Completed, Verified, Cancelled, Overdue, Open, Assigned, In Progress — all 7 segments of the
+    `ActionStatus` set, `functional-requirements.md` §1.0.3), Monthly Investigation Trend (line, 12
+    months, zero-filled).
   - **Filter Bar**: a horizontal bar of 6 controls (§ Filters below), a "Clear filters" GhostButton,
     and an active-filter-count indicator when any are applied.
 - **Forms**: N/A (filter controls are selects/date pickers, applied live — not a submitted form).

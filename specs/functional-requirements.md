@@ -328,6 +328,19 @@ pattern as FR-061) and apply uniformly to every tile, every chart, and the Recen
 
 ### 1.1 Worked Example (Simulated Data)
 
+**Revision note (Phase 12)**: this worked example originally used a draft occurrence-category taxonomy
+(`RunwayExcursion`, `BirdWildlifeStrike`, `GroundHandling`, `SystemComponentFailure`, `CFIT`,
+`LossOfControlInFlight`, `AirspaceInfringement`) and a draft severity scale (`SeriousIncident`,
+`Incident`, `Occurrence`, `Accident`) that were superseded by the 14-value `OccurrenceCategory` enum
+and 5-value `RiskSeverity` enum actually built (`data-model.md` §6.6, `prisma/schema.prisma`). Every
+category/severity value below is remapped 1:1 onto the real enums (severity by rough ordinal
+correspondence: `Accident`→`Catastrophic`, `SeriousIncident`→`Major`, `Incident`→`Moderate`,
+`Occurrence`→`Minor`); every count, date, aerodrome, and aircraft value is unchanged, so all
+downstream arithmetic in this section still holds. The Monthly Investigation Trend window is also
+corrected below to genuinely follow §1.0.3's "trailing 12 months ending the current month" rule
+against this section's own stated "today" (2026-09-01), rather than the previously-inconsistent
+2025-07–2026-06 window.
+
 A small fictional dataset illustrating the calculations in §1.0, with no filters applied. All data is
 invented per `product-spec.md` A8; the "today" reference date for Overdue calculations is 2026-09-01.
 
@@ -335,20 +348,20 @@ invented per `product-spec.md` A8; the "today" reference date for Overdue calcul
 
 | Ref | Status | Category | Severity | Aerodrome | Aircraft | Occurrence Month |
 |---|---|---|---|---|---|---|
-| INC-2026-0001 | Closed | RunwayExcursion | SeriousIncident | ZZFI | AV-320 | 2025-10 |
-| INC-2026-0002 | Closed | BirdWildlifeStrike | Incident | ZZFC | AV-200 | 2025-11 |
-| INC-2026-0003 | Closed | GroundHandling | Occurrence | ZZFI | AV-320 | 2025-11 |
-| INC-2026-0004 | Review | SystemComponentFailure | Incident | ZZFM | AV-450 | 2025-12 |
-| INC-2026-0005 | Review | CFIT | Accident | ZZFC | AV-320 | 2026-01 |
-| INC-2026-0006 | Analysis | LossOfControlInFlight | SeriousIncident | ZZFI | AV-200 | 2026-02 |
-| INC-2026-0008 | UnderInvestigation | GroundHandling | Occurrence | ZZFM | AV-320 | 2026-03 |
-| INC-2026-0009 | UnderInvestigation | AirspaceInfringement | Incident | ZZFI | AV-450 | 2026-04 |
-| INC-2026-0010 | Open | SystemComponentFailure | Incident | ZZFC | AV-320 | 2026-05 |
-| INC-2026-0011 | Open | Other | Occurrence | ZZFI | AV-200 | 2026-05 |
+| INC-2026-0001 | Closed | AircraftIncident | Major | ZZFI | AV-320 | 2025-10 |
+| INC-2026-0002 | Closed | AircraftIncident | Moderate | ZZFC | AV-200 | 2025-11 |
+| INC-2026-0003 | Closed | GroundHandlingIncident | Minor | ZZFI | AV-320 | 2025-11 |
+| INC-2026-0004 | Review | MaintenanceRelatedOccurrence | Moderate | ZZFM | AV-450 | 2025-12 |
+| INC-2026-0005 | Review | AircraftIncident | Catastrophic | ZZFC | AV-320 | 2026-01 |
+| INC-2026-0006 | Analysis | AircraftIncident | Major | ZZFI | AV-200 | 2026-02 |
+| INC-2026-0008 | UnderInvestigation | GroundHandlingIncident | Minor | ZZFM | AV-320 | 2026-03 |
+| INC-2026-0009 | UnderInvestigation | SecurityRelatedOccurrence | Moderate | ZZFI | AV-450 | 2026-04 |
+| INC-2026-0010 | Open | MaintenanceRelatedOccurrence | Moderate | ZZFC | AV-320 | 2026-05 |
+| INC-2026-0011 | Open | Other | Minor | ZZFI | AV-200 | 2026-05 |
 | INC-2026-0012 | Draft | *(unset)* | *(unset)* | *(unset)* | *(unset)* | 2026-06 |
-| INC-2026-0013 | Closed | RunwayExcursion | Accident | ZZFC | AV-450 | 2025-09 |
-| INC-2026-0014 | Closed | BirdWildlifeStrike | Incident | ZZFI | AV-320 | 2025-12 |
-| INC-2026-0031 | Analysis | BirdWildlifeStrike | Incident | ZZFC | AV-320 | 2026-06 |
+| INC-2026-0013 | Closed | AircraftIncident | Catastrophic | ZZFC | AV-450 | 2025-09 |
+| INC-2026-0014 | Closed | AircraftIncident | Moderate | ZZFI | AV-320 | 2025-12 |
+| INC-2026-0031 | Analysis | AircraftIncident | Moderate | ZZFC | AV-320 | 2026-06 |
 
 (INC-2026-0031 is the same fictional Skylark Air bird-strike investigation used as the example in
 `data-model.md` §10.)
@@ -359,17 +372,23 @@ Investigation (UnderInvestigation+Analysis) = 4 (0006, 0008, 0009, 0031). Awaiti
 
 **Investigations by Status**: Draft=1, Open=2, UnderInvestigation=2, Analysis=2, Review=2, Closed=5.
 
-**By Occurrence Category**: RunwayExcursion=2, BirdWildlifeStrike=3, GroundHandling=2,
-SystemComponentFailure=2, CFIT=1, LossOfControlInFlight=1, AirspaceInfringement=1, Other=1,
-Unclassified=1 (sum=14).
+**By Occurrence Category**: AircraftIncident=7 (0001, 0002, 0005, 0006, 0013, 0014, 0031),
+GroundHandlingIncident=2 (0003, 0008), MaintenanceRelatedOccurrence=2 (0004, 0010),
+SecurityRelatedOccurrence=1 (0009), Other=1 (0011), Unclassified=1 (0012); every other category
+(RampSafetyIncident, BaggageIncident, CargoIncident, DangerousGoodsIncident,
+PassengerHandlingIncident, OccupationalSafetyIncident, EquipmentVehicleIncident,
+EnvironmentalOccurrence, NearMiss) = 0, shown per §1.0.3's "including zero-count ones" rule (sum=14).
 
 **Incidents by Location**: ZZFI=6, ZZFC=5, ZZFM=2, Unspecified=1 (sum=14).
 
 **By Aircraft Type** (informational, not a chart in this revision but usable for the Aircraft Type
 filter's option list): AV-320=7, AV-200=3, AV-450=3, Unspecified=1.
 
-**Monthly Investigation Trend** (2025-07 through 2026-06, zero-filled): Jul=0, Aug=0, Sep=1, Oct=1,
-Nov=2, Dec=2, Jan=1, Feb=1, Mar=1, Apr=1, May=2, Jun=2 (sum=14).
+**Monthly Investigation Trend** (default window per §1.0.3 is trailing 12 months ending the *current*
+month — with "today" = 2026-09-01, that is 2025-10 through 2026-09, zero-filled): Oct=1, Nov=2, Dec=2,
+Jan=1, Feb=1, Mar=1, Apr=1, May=2, Jun=2, Jul=0, Aug=0, Sep=0 (sum=13 — INC-2026-0013's 2025-09
+occurrence falls one month before this window and is correctly excluded; the trend chart is a bounded
+window, not required to sum to the Total tile the way the 4 status tiles are, §1.0.2).
 
 **Sample Hazards** (feeding High-Risk Findings; none of these have a residual assessment recorded
 yet, so the tile falls back to `initialRiskBand` for each, per §1.0.2): INC-0005 has two —
