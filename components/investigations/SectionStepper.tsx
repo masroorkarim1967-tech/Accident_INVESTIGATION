@@ -4,8 +4,7 @@ import { CompletenessIndicator, type CompletenessState } from "./CompletenessInd
 /**
  * Section Stepper (ui-spec.md §2.3) — the investigation workspace's left
  * rail, listing all 13 workspace pages (ui-spec.md §3's page-to-module
- * mapping). Every section is now a real route as of Phase 10 except
- * Report Preview (Phase 13).
+ * mapping). Every section is now a real route as of Phase 13.
  */
 interface StepperSection {
   key: string;
@@ -109,7 +108,7 @@ export function SectionStepper({
       href: `/investigations/${investigationId}/review`,
       completeness: reviewCompleteness,
     },
-    { key: "report", label: "Report Preview", completeness: "not-started" },
+    { key: "report", label: "Report Preview", href: `/investigations/${investigationId}/report`, completeness: "not-started" },
   ];
 
   return (

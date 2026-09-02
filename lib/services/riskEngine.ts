@@ -93,15 +93,18 @@ const PRIORITY_RANK: Record<InvestigationPriority, number> = {
 
 const FLOOR_CATEGORIES: OccurrenceCategory[] = ["DangerousGoodsIncident", "SecurityRelatedOccurrence"];
 
+function resolveBandKey(riskBandLabel: string): "Low" | "Moderate" | "High" | "Critical" {
+  return (["Low", "Moderate", "High", "Critical"] as const).includes(riskBandLabel as never)
+    ? (riskBandLabel as "Low" | "Moderate" | "High" | "Critical")
+    : "Critical";
+}
+
 export function resolveInvestigationPriority(
   severity: RiskSeverity,
   riskBandLabel: string,
   category: OccurrenceCategory | null,
 ): InvestigationPriority {
-  const bandKey = (["Low", "Moderate", "High", "Critical"] as const).includes(riskBandLabel as never)
-    ? (riskBandLabel as "Low" | "Moderate" | "High" | "Critical")
-    : "Critical";
-
+  const bandKey = resolveBandKey(riskBandLabel);
   let priority = PRIORITY_MATRIX[severity][bandKey];
 
   if (category && FLOOR_CATEGORIES.includes(category) && PRIORITY_RANK[priority] < PRIORITY_RANK.Elevated) {
@@ -109,6 +112,18 @@ export function resolveInvestigationPriority(
   }
 
   return priority;
+}
+
+/**
+ * report-spec.md §5.10 — whether the Dangerous Goods/Security-Related
+ * category floor actually raised the priority above what the severity x
+ * risk-band matrix alone would have produced, for the report's "noting if
+ * the ... floor applied" requirement.
+ */
+export function categoryFloorApplied(severity: RiskSeverity, riskBandLabel: string, category: OccurrenceCategory | null): boolean {
+  if (!category || !FLOOR_CATEGORIES.includes(category)) return false;
+  const basePriority = PRIORITY_MATRIX[severity][resolveBandKey(riskBandLabel)];
+  return PRIORITY_RANK[basePriority] < PRIORITY_RANK.Elevated;
 }
 
 /** The more severe of two severity ratings, per data-model.md §3.3's `severity` computation rule. */
