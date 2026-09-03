@@ -8,12 +8,14 @@ Built as a portfolio-grade demonstration of applied domain modeling, disciplined
 software engineering, and a responsible pattern for "AI-adjacent" decision-support tooling that
 requires **no external API key, no paid service, and no external AI provider** of any kind.
 
-> **Status**: implementation in progress. Phases 1–4 of a 16-phase plan are built — project
-> foundation, database schema, authentication and layout, and investigation creation/list/detail/
-> assignment — plus a production-hardening pass (security headers, error boundaries, health check)
-> pulled forward ahead of its normal place in the sequence. See [§Key Features](#key-features) below
-> for exactly what's implemented versus specified-but-not-yet-built, and
-> [`specs/implementation-plan.md`](specs/implementation-plan.md) for the full phase breakdown.
+> **Status**: all 16 phases of the implementation plan are built and deployed — from project
+> foundation and database schema through the full investigation workflow, the rule-based
+> Investigation Support Engine, the Dashboard, report generation, the automated test suite, and a
+> production-hardening pass. **Live at
+> [accidentinvetigation.vercel.app](https://accidentinvetigation.vercel.app)** — sign in with any of
+> the five demo accounts in [§Database Setup](#database-setup). See
+> [`specs/implementation-plan.md`](specs/implementation-plan.md) for the full phase breakdown and
+> [`specs/spec-review.md`](specs/spec-review.md) for every known gap's disposition.
 
 ---
 
@@ -70,36 +72,41 @@ Two related problems motivate this project:
 
 ## Key Features
 
-Organized by what's actually running today versus what's fully specified and scheduled. Nothing
-below is claimed as built unless it is — see [`specs/implementation-plan.md`](specs/implementation-plan.md)
-for the phase each item belongs to.
-
-**✅ Implemented (Phases 1–4)**
+All 16 phases are built — see [`specs/implementation-plan.md`](specs/implementation-plan.md) for
+the phase each item was delivered in, and [`specs/spec-review.md`](specs/spec-review.md) for the
+disposition of every known gap found along the way (most closed; a handful explicitly deferred with
+a documented reason, never silently dropped).
 
 - Role-based authentication (5 roles: Administrator, Investigation Manager, Investigator, Reviewer,
-  Viewer) with server-side session re-validation on every request, database-backed login
-  rate-limiting, and a transparent "Continue as Viewer" public-demo path
+  Viewer) with server-side session re-validation on every request, an 8-hour absolute session
+  lifetime, database-backed login rate-limiting, and a transparent "Continue as Viewer" public-demo
+  path
 - Investigation creation, with a collision-free per-year sequential reference number
-  (`INC-YYYY-NNNN`)
+  (`INC-YYYY-NNNN`), and Administrator-only Draft deletion
 - Role-scoped investigation list with free-text search, status/date filtering, sortable columns, and
   pagination
 - Investigation detail view with a 13-section workspace stepper and completeness indicators
-- Investigator assignment and reassignment, including mid-review reassignment
-- Full audit history logging (every lifecycle event recorded, append-only)
-- The "Ops Board" dark-by-default visual identity, responsive down to 375px, with WCAG AA-targeted
-  contrast and full keyboard navigability
-
-**📋 Specified, not yet built (Phases 5–16)**
-
-- Occurrence, aircraft, flight, location, persons, witness, and evidence data capture
-- Occurrence classification and the configurable risk-scoring engine
-- Contributing-factor analysis, 5 Whys, and root-cause documentation
-- Corrective and preventive action tracking, with a portfolio-wide Action Tracker
-- Independent review and closure workflow, with a closure gate on incomplete required actions
-- The rule-based Investigation Support Engine (see below)
-- The operations dashboard (7 stat tiles, 6 charts, combinable filters)
-- Full report generation (24-section structure, print/PDF export, JSON export)
-- Full accessibility/responsive/cross-browser automated test suite
+- Full Occurrence, Aircraft, Flight, Location, Persons, Immediate Actions, Witness, and Evidence data
+  capture, including file attachments stored as `Bytes` columns (no local-disk dependency, so it
+  works on Vercel's serverless filesystem)
+- Occurrence classification (14-category taxonomy) and the configurable risk-scoring engine
+  (Likelihood × Severity → Score → Band → Investigation Priority, with a Dangerous Goods/Security
+  category floor)
+- Contributing-factor analysis (10-category framework), 5 Whys, and Potential Root Cause
+  documentation (never presented as a proven determination)
+- Corrective and preventive action tracking, with a portfolio-wide Action Tracker and a closure gate
+  on incomplete required actions
+- Independent review and closure workflow, including an Administrator override-and-close path
+- The rule-based Investigation Support Engine — Suggested Classification, Missing-Information
+  Warnings, Checklist Suggestions, Completeness Scoring, Contributing-Factor Suggestions,
+  Follow-up Questions, Report Quality Checks — entirely local, deterministic, keyless
+- The operations dashboard (7 stat tiles, 6 charts, a 6-dimension combinable filter bar)
+- Full 24-section report generation (FACTS/Investigator Assessment/Recommendations/Administrative
+  Record banners, print/PDF export via the browser, JSON export)
+- Automated test suite (Vitest unit/integration + Playwright E2E/responsive/accessibility, 295+
+  tests) wired into CI against an ephemeral per-run database branch
+- The "Ops Board" dark-by-default visual identity (light theme also available), responsive down to
+  375px, WCAG AA contrast, and full keyboard navigability
 
 ## Technology Stack
 
@@ -113,7 +120,7 @@ for the phase each item belongs to.
 | Validation | [Zod](https://zod.dev) |
 | Auth | [Auth.js](https://authjs.dev) v5, Credentials provider, JWT sessions with database re-validation |
 | Testing | [Vitest](https://vitest.dev) (unit/integration/coverage); [Playwright](https://playwright.dev) (E2E, responsive UI, accessibility via axe-core) |
-| Hosting (planned) | [Vercel](https://vercel.com) (Hobby tier) |
+| Hosting | [Vercel](https://vercel.com) (Hobby tier) — [live](https://accidentinvetigation.vercel.app) |
 
 No dependency in this stack requires an API key, a paid tier, or a call to an external AI/ML
 service — verified explicitly in [`specs/technical-architecture.md`](specs/technical-architecture.md) §2.
@@ -190,10 +197,10 @@ considered, is in [`specs/investigation-workflow.md`](specs/investigation-workfl
 
 ## Rule-Based Investigation Support Engine
 
-**📋 Specified in full; scheduled for Phase 11 — not yet implemented.**
+**✅ Built (Phase 11).**
 
 The application is designed around a firm constraint: decision-support features must never depend
-on an external AI provider. The planned Investigation Support Engine delivers eight capabilities —
+on an external AI provider. The Investigation Support Engine delivers eight capabilities —
 suggested classification, potential contributing-factor suggestions, recommended 5-Whys follow-up
 questions, missing-information warnings, an investigation completeness score, risk warnings,
 corrective-action reminders, and report quality checks — using only ordinary, auditable,
@@ -201,11 +208,11 @@ human-authored rule evaluation and keyword matching against the investigation's 
 and a small bundled knowledge base. No trained model, local or hosted; no network call to any AI/ML
 service, ever.
 
-Every output will be visibly labeled **"Investigation Support"** plus a specific sub-label
+Every output is visibly labeled **"Investigation Support"** plus a specific sub-label
 ("Suggested Classification," "Potential Contributing Factor," "Recommended Follow-up," etc.),
-styled distinctly from confirmed data, and require explicit human confirmation before becoming part
-of the investigation record — never phrased as official, regulatory, or authoritative. Full design
-— inputs, rules, outputs, confidence handling, and safety constraints — is in
+styled distinctly from confirmed data, and requires explicit human confirmation before becoming
+part of the investigation record — never phrased as official, regulatory, or authoritative. Full
+design — inputs, rules, outputs, confidence handling, and safety constraints — is in
 [`specs/assistance-engine.md`](specs/assistance-engine.md).
 
 ## Screenshots
@@ -282,32 +289,38 @@ Open [http://localhost:3000](http://localhost:3000).
 ## Testing
 
 ```bash
-npm run test        # Vitest — unit and integration tests
-npm run typecheck    # TypeScript, strict mode
-npm run lint          # ESLint
-npm run build           # Production build
+npm run test           # Vitest — unit and integration tests
+npm run test:coverage  # same, with coverage reporting
+npm run test:e2e       # Playwright — E2E, responsive UI, accessibility (axe-core)
+npm run typecheck      # TypeScript, strict mode
+npm run lint            # ESLint
+npm run build            # Production build
 ```
 
-Unit tests (Zod validation schemas) run with no external dependency. Integration tests exercise
-real Server Actions and services against a live database and are skipped automatically
-(`describe.skipIf`) when no `DATABASE_URL` is configured, rather than failing — they're written and
-ready to run the moment one is available. A Playwright end-to-end suite is planned for Phase 14; see
-[`specs/testing-spec.md`](specs/testing-spec.md) for the full test plan (54 scenarios across 11
-categories, both positive and negative coverage for every feature area).
+Unit tests (Zod validation schemas, the risk engine, the Assistance Engine's rule matching) run
+with no external dependency. Integration tests exercise real Server Actions and services against a
+live database and are skipped automatically (`describe.skipIf`) when no `DATABASE_URL` is
+configured, rather than failing. `.github/workflows/ci.yml` runs the full suite — including
+DB-backed tests and Playwright — against a fresh ephemeral Neon branch on every pull request, per
+`technical-architecture.md` §12. See [`specs/testing-spec.md`](specs/testing-spec.md) for the full
+test plan (54 scenarios across 11 categories, both positive and negative coverage for every feature
+area) and [`specs/spec-review.md`](specs/spec-review.md) for each finding's final disposition.
 
 ## Deployment
 
-**Not yet deployed.** The target architecture is Vercel (Hobby tier) with Neon Postgres, chosen
-specifically because neither requires a credit card or paid tier for this project's scale, and both
-integrate natively (one-click provisioning, per-preview-deployment database branching).
+**Live**: [https://accidentinvetigation.vercel.app](https://accidentinvetigation.vercel.app) —
+hosted on Vercel (Hobby tier) with Neon Postgres, chosen specifically because neither requires a
+credit card or paid tier for this project's scale, and both integrate natively (one-click
+provisioning, per-preview-deployment database branching). Sign in with any of the five demo
+accounts below.
 
-The full step-by-step procedure — GitHub repository, Vercel account, importing the repository,
-environment variables, provisioning Neon, `prisma migrate deploy`, seeding, build, deploy,
-domain/URL, and a post-deployment smoke-test checklist — is written out in
-[`specs/deployment-spec.md`](specs/deployment-spec.md). The architectural reasoning behind these
-choices is in [`specs/technical-architecture.md`](specs/technical-architecture.md) §5, §9–§11, and
-the original phase-plan entry is [`specs/implementation-plan.md`](specs/implementation-plan.md)
-Phase 16.
+The full step-by-step procedure that was followed to deploy it — GitHub repository, Vercel account,
+importing the repository, environment variables, provisioning Neon, `prisma migrate deploy`,
+seeding, build, deploy, domain/URL, and a post-deployment smoke-test checklist — is written out in
+[`specs/deployment-spec.md`](specs/deployment-spec.md), useful as a reference for redeploying
+elsewhere or standing up a second environment. The architectural reasoning behind these choices is
+in [`specs/technical-architecture.md`](specs/technical-architecture.md) §5, §9–§11, and the original
+phase-plan entry is [`specs/implementation-plan.md`](specs/implementation-plan.md) Phase 16.
 
 ## Disclaimer
 
@@ -357,6 +370,6 @@ documented in `/specs` before any code is written.
 | [security-spec.md](specs/security-spec.md) | Security requirements and binding non-negotiable rules |
 | [testing-spec.md](specs/testing-spec.md) | Test categories, acceptance criteria, test scenarios |
 | [spec-review.md](specs/spec-review.md) | Cross-specification consistency review and findings |
-| [implementation-plan.md](specs/implementation-plan.md) | 16-phase implementation plan, currently in progress |
+| [implementation-plan.md](specs/implementation-plan.md) | 16-phase implementation plan — all phases complete |
 
 See also [`CONTRIBUTING.md`](CONTRIBUTING.md) for the conventions this project follows.
