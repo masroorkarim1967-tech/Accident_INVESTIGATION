@@ -9,3 +9,10 @@
 export const DEMO_PASSWORD = "Demo!Pass2026";
 
 export const GUEST_VIEWER_EMAIL = "viewer@investigations.example";
+
+/**
+ * Login removed: every visitor is signed in automatically as this
+ * Administrator account (app/api/auto-login/route.ts), so the app opens
+ * straight to the dashboard with full access.
+ */
+export const AUTO_LOGIN_EMAIL = "a.whitfield@investigations.example";

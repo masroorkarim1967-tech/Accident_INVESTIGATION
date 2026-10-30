@@ -32,7 +32,6 @@ export default auth((req) => {
   // not a workspace route — must mirror authConfig's authorized callback.
   const { pathname } = req.nextUrl;
   const isPublicRoute = pathname === "/" || pathname.startsWith("/login");
-  const isWorkspaceRoute = !isPublicRoute;
 
   const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
   // React's dev-mode Fast Refresh uses eval() for stack-trace reconstruction
@@ -55,10 +54,14 @@ export default auth((req) => {
     "frame-ancestors 'none'",
   ].join("; ");
 
-  if (isWorkspaceRoute && !isLoggedIn) {
-    const response = NextResponse.redirect(new URL("/login", req.nextUrl.origin));
-    response.headers.set("Content-Security-Policy", cspHeader);
-    return response;
+  // Login removed: visitors without a session are signed in automatically
+  // (app/api/auto-login/route.ts) instead of seeing the landing/login pages;
+  // signed-in visitors skip those pages and go straight to the dashboard.
+  const target = !isLoggedIn ? "/api/auto-login" : isPublicRoute ? "/dashboard" : null;
+  if (target) {
+    const redirect = NextResponse.redirect(new URL(target, req.nextUrl.origin));
+    redirect.headers.set("Content-Security-Policy", cspHeader);
+    return redirect;
   }
 
   const requestHeaders = new Headers(req.headers);

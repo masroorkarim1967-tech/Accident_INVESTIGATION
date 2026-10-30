@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { LandingPage } from "@/components/landing/LandingPage";
 
 export const metadata: Metadata = {
   title: "Aviation Incident Investigation Assistant",
@@ -19,8 +18,6 @@ export const metadata: Metadata = {
  */
 export default async function RootPage() {
   const session = await auth();
-  if (session?.user) {
-    redirect("/dashboard");
-  }
-  return <LandingPage />;
+  // Login removed: everyone goes straight into the app.
+  redirect(session?.user ? "/dashboard" : "/api/auto-login");
 }
